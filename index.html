@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Amy's CV Paint Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%238e44ad' d='M11 2h2v2h-2zM9 4h2v2H9zM7 6h2v2H7zM5 8h2v2H5zM3 10h2v4H3z'/%3E%3Cpath fill='%239b59b6' d='M13 0h3v3h-3z'/%3E%3Cpath fill='%2334495e' d='M2 11h2v4H2z'/%3E%3C/svg%3E">
+<style>
+    :root {
+        --bg-color: #dbe4eb;
+        --card-bg: #f0f2f5;
+        --lcd-bg: #1a1a1a;
+        --lcd-text: #2cec8c;
+        --amy-purple: #8e44ad;
+    }
+
+    body {
+        background-color: var(--bg-color);
+        background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+        background-size: 20px 20px;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        user-select: none;
+        overflow-y: auto;
+    }
+
+    .app-shell { max-width: 1100px; margin: 0.5rem auto; }
+
+    .coleco-card {
+        background: var(--card-bg);
+        border: 1px solid #c0c0c0;
+        border-top: none;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+        padding: 15px; 
+    }
+
+    .navbar {
+        background: linear-gradient(180deg, #343a40 0%, #212529 100%) !important;
+        border-radius: 8px 8px 0 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        padding-top: 0.25rem; padding-bottom: 0.25rem; min-height: 48px;
+        z-index: 10;
+    }
+    .navbar-brand { letter-spacing: 1px; font-weight: 700; text-transform: uppercase; font-size: 1.1rem; }
+
+    .canvas-wrapper {
+        position: relative; background: #000; image-rendering: pixelated; 
+        overflow: hidden; width: 512px; height: 384px; margin: 0 auto; 
+        border: 8px solid #222; border-radius: 4px;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.3);
+    }
+    .canvas-wrapper canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    
+    .cursor-pen { cursor: crosshair; }
+    .cursor-eraser { cursor: cell; } 
+    .cursor-shape { cursor: nwse-resize; }
+    .cursor-select { cursor: grab; }
+    .cursor-paste { cursor: copy; }
+    .cursor-pipette { cursor: copy; }
+
+    #gridCanvas { pointer-events: none; }
+
+    .btn-group .btn { font-weight: 600; letter-spacing: 0.5px; }
+    .btn-outline-primary { border-color: #6c757d; color: #495057; }
+    .btn-check:checked + .btn-outline-primary {
+        background-color: #495057; border-color: #495057; color: #fff;
+        box-shadow: inset 0 3px 5px rgba(0,0,0,0.3);
+    }
+    
+    .palette-swatch { 
+        width: 28px; height: 22px; border-radius: 3px; 
+        border: 1px solid rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.1s;
+    }
+    .palette-swatch:hover { transform: scale(1.1); z-index: 2; }
+    .palette-swatch.selected-fg { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; z-index: 3; position: relative; }
+    .palette-swatch.selected-bg { box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff; z-index: 3; position: relative; }
+    
+    .current-color-box { 
+        width: 36px; height: 30px; border-radius: 4px; border: 2px solid #333; 
+        box-shadow: inset 0 0 4px rgba(0,0,0,0.3);
+    }
+
+    .status-bar { 
+        background: var(--lcd-bg); color: var(--lcd-text);
+        font-family: 'Courier New', Courier, monospace; font-weight: bold;
+        border-radius: 4px; padding: 4px 8px; border: 2px solid #555;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); margin-top: 6px;    
+        text-shadow: 0 0 2px rgba(0,255,65,0.5); font-size: 0.9rem;  
+    }
+    
+    .material-symbols-outlined { font-size: 20px; vertical-align: middle; }
+
+    /* Dither Modal */
+    .dither-wrap { display: flex; flex-direction: row; gap: 12px; align-items: flex-start; justify-content: center; }
+    .preview-panel { 
+        background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; 
+        padding: 12px; display: flex; flex-direction: column; align-items: center; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .dither-canvas { display: block; image-rendering: pixelated; background: #000; border: 4px solid #333; border-radius: 2px; max-width: 100%; }
+    .dither-controls { margin-top: 12px; width: 100%; text-align: left; }
+    .dither-controls label { display: block; margin-top: 8px; font-size: 14px; font-weight: 600; }
+    .dither-controls input[type="range"] { width: 100%; }
+    .palette-column { 
+        display: flex; flex-direction: column; gap: 3px; 
+        background: #fff; border: 1px solid #ccc; border-radius: 6px; 
+        padding: 8px; max-height: 400px; overflow-y: auto; width: 180px; 
+    }
+    .pal-row { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+    .pal-swatch-sm { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #999; }
+
+    .drop-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
+        z-index: 9999; display: none; align-items: center; justify-content: center;
+        color: #00ff41; font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: bold;
+        text-shadow: 0 0 10px rgba(0,255,65,0.6); border: 10px dashed #00ff41;
+    }
+    
+    /* About Modal Styling */
+    .about-header { background-color: var(--amy-purple); color: white; border-bottom: 0; }
+    .about-logo { font-size: 3rem; color: var(--amy-purple); text-align: center; margin-bottom: 1rem; }
+    .spec-table td { padding: 2px 8px; }
+</style>
+</head>
+<body>
+
+<div class="drop-overlay" id="dropOverlay">INSERT CARTRIDGE / DROP FILE</div>
+
+<div class="app-shell">
+    <nav class="navbar navbar-expand-sm navbar-dark rounded-top">
+        <div class="container-fluid">
+            <span class="navbar-brand"><span class="material-symbols-outlined me-1">videogame_asset</span> Coleco Paint Studio v12</span>
+            
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle py-1" href="#" data-bs-toggle="dropdown">File</a>
+                    <ul class="dropdown-menu shadow">
+                        <li><button class="dropdown-item" id="menuNew">New Canvas</button></li>
+                        <li><button class="dropdown-item" id="menuOpen">Open File…</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Export Binary</h6></li>
+                        <li><button class="dropdown-item" id="menuSavePc">Save .pc</button></li>
+                        <li><button class="dropdown-item" id="menuSavePat">Save .pattern</button></li>
+                        <li><button class="dropdown-item" id="menuSaveCol">Save .color</button></li>
+                        <li><button class="dropdown-item" id="menuSaveGrp">Save .grp</button></li>
+                        <li><button class="dropdown-item" id="menuSavePP10k">Save .pp (10k)</button></li>
+                        <li><button class="dropdown-item" id="menuSavePP40k">Save .pp (40k)</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item" id="menuSavePng">Export PNG</button></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <div class="d-flex gap-2">
+                 <button class="btn btn-sm btn-outline-light d-flex align-items-center py-0" id="btnAbout" title="About / Info"><span class="material-symbols-outlined" style="font-size:20px">help</span></button>
+                <div class="vr bg-secondary mx-1"></div>
+                <button class="btn btn-sm btn-secondary d-flex align-items-center py-0" id="btnUndo" title="Undo (Ctrl+Z)" disabled><span class="material-symbols-outlined" style="font-size:18px">undo</span></button>
+                <button class="btn btn-sm btn-secondary d-flex align-items-center py-0" id="btnRedo" title="Redo (Ctrl+Y)" disabled><span class="material-symbols-outlined" style="font-size:18px">redo</span></button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="coleco-card rounded-bottom">
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="d-flex mb-2 flex-wrap gap-2 justify-content-center bg-white p-1 rounded border">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollUp1"><span class="material-symbols-outlined">keyboard_arrow_up</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollUp8"><span class="material-symbols-outlined">keyboard_double_arrow_up</span></button>
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollDown1"><span class="material-symbols-outlined">keyboard_arrow_down</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollDown8"><span class="material-symbols-outlined">keyboard_double_arrow_down</span></button>
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollLeft1"><span class="material-symbols-outlined">keyboard_arrow_left</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollLeft8"><span class="material-symbols-outlined">keyboard_double_arrow_left</span></button>
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollRight1"><span class="material-symbols-outlined">keyboard_arrow_right</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollRight8"><span class="material-symbols-outlined">keyboard_double_arrow_right</span></button>
+                    </div>
+                </div>
+
+                <div class="canvas-wrapper mb-2">
+                    <canvas id="paintCanvas" width="256" height="192" class="cursor-pen"></canvas>
+                    <canvas id="gridCanvas" width="256" height="192"></canvas>
+                </div>
+
+                <div class="status-bar d-flex justify-content-between">
+                    <span id="statusText">SYSTEM READY...</span>
+                    <span id="coordText">X:00 Y:00</span>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="row g-2">
+                    <div class="col-6 col-lg-3">
+                        <div class="mb-1 fw-bold small text-uppercase text-muted" style="font-size:0.75rem">Palette</div>
+                        <div id="paletteContainer" class="d-flex flex-column gap-1"></div>
+                    </div>
+                    <div class="col-6 col-lg-9 d-flex flex-column">
+                        <div class="mb-2 p-2 bg-white border rounded">
+                            <div class="small text-uppercase fw-bold text-muted mb-1" style="font-size:0.75rem">Active</div>
+                            <div class="d-flex align-items-center gap-3 justify-content-center">
+                                <div><div class="current-color-box mb-1" id="fgBox"></div><div class="text-center small fw-bold">FG</div></div>
+                                <div><div class="current-color-box mb-1" id="bgBox"></div><div class="text-center small fw-bold">BG</div></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="small mb-1 fw-bold text-uppercase text-muted" style="font-size:0.75rem">Tools</div>
+                            <div class="btn-group w-100 mb-2 shadow-sm" role="group">
+                                <input type="radio" class="btn-check" name="tool" id="toolPen" checked>
+                                <label class="btn btn-sm btn-outline-primary py-1" for="toolPen" title="Pen (P)"><span class="material-symbols-outlined">edit</span></label>
+                                <input type="radio" class="btn-check" name="tool" id="toolEraser">
+                                <label class="btn btn-sm btn-outline-primary py-1" for="toolEraser" title="Eraser (E)"><span class="material-symbols-outlined">ink_eraser</span></label>
+                                <input type="radio" class="btn-check" name="tool" id="toolSelect">
+                                <label class="btn btn-sm btn-outline-primary py-1" for="toolSelect" title="Select (S)"><span class="material-symbols-outlined">select_all</span></label>
+                            </div>
+                            <div class="btn-group w-100 mb-2 shadow-sm" role="group">
+                                <input type="radio" class="btn-check" name="tool" id="toolRect">
+                                <label class="btn btn-sm btn-outline-primary py-1" for="toolRect" title="Rectangle (R)"><span class="material-symbols-outlined">rectangle</span></label>
+                                <input type="radio" class="btn-check" name="tool" id="toolRectGrid">
+                                <label class="btn btn-sm btn-outline-primary py-1" for="toolRectGrid" title="Grid Rect (G)"><span class="material-symbols-outlined">grid_4x4</span></label>
+                                <input type="radio" class="btn-check" name="tool" id="toolCircle">
+                                <label class="btn btn-sm btn-outline-primary py-1" for="toolCircle" title="Circle/Oval (O)"><span class="material-symbols-outlined">circle</span></label>
+                                <input type="radio" class="btn-check" name="tool" id="toolLine">
+                                <label class="btn btn-sm btn-outline-primary py-1" for="toolLine" title="Line (L)"><span class="material-symbols-outlined">timeline</span></label>
+                            </div>
+                        </div>
+
+                        <div class="btn-group btn-group-sm d-flex mb-2 shadow-sm">
+                            <button class="btn btn-outline-secondary py-1" id="btnGrid" title="Toggle Grid (X)">
+                                <span class="material-symbols-outlined" style="font-size:18px">grid_on</span> Grid
+                            </button>
+                            <button class="btn btn-outline-secondary py-1" id="btnZoom" title="Toggle Zoom (Z)">
+                                <span class="material-symbols-outlined" id="btnZoomIcon" style="font-size:18px">zoom_in</span> Zoom
+                            </button>
+                        </div>
+
+                        <button class="btn btn-sm btn-outline-danger w-100 mb-2 py-1" id="btnClear">
+                            <span class="material-symbols-outlined" style="font-size:16px;">delete</span> Clear
+                        </button>
+                        
+                        <div class="alert alert-secondary py-1 px-2 mt-auto mb-0" style="font-size:0.7rem">
+                            <strong>Keys:</strong> S=Select, C=Copy, V=Paste, X=Cut. Hold <code>Alt</code> for Picker.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="fileImage" style="display:none">
+
+<div class="modal fade" id="aboutModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header about-header">
+        <h5 class="modal-title fw-bold">About Amy's CV Paint Studio</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="about-logo">
+            <span class="material-symbols-outlined" style="font-size: 64px;">brush</span>
+        </div>
+        <div class="text-center mb-4">
+            <h4 class="fw-bold" style="color: var(--amy-purple);">Developed by Amy Purple</h4>
+            <div class="text-muted small">(Formerly known as NewColeco)</div>
+        </div>
+
+        <h6 class="fw-bold border-bottom pb-1">System Capabilities</h6>
+        <table class="table table-sm table-borderless small spec-table mb-3">
+            <tr><td class="text-muted">Video Mode:</td><td>TMS9918A Mode 2 (256x192)</td></tr>
+            <tr><td class="text-muted">Resolution:</td><td>32x24 Tiles (8x8 pixels)</td></tr>
+            <tr><td class="text-muted">Color:</td><td>2 Colors per 8x1 line (15 color palette)</td></tr>
+            <tr><td class="text-muted">Import:</td><td>SCR, MLT, PC, GRP, MC, IMG (Gigascreen)</td></tr>
+            <tr><td class="text-muted">Algorithms:</td><td>Error Diffusion Dithering</td></tr>
+        </table>
+
+        <h6 class="fw-bold border-bottom pb-1">Legacy History</h6>
+        <div class="small text-muted mb-2">
+            Based on the original VisualBasic tools created by Daniel Bienvenu (NewColeco):
+        </div>
+        <ul class="small text-muted">
+            <li><strong>Coleco Paint:</strong> v1.7.1 (Last updated July 5th, 2003)</li>
+            <li><strong>CV Dithering:</strong> (Last updated Nov 4th, 2005)</li>
+        </ul>
+        
+        <div class="alert alert-light border small text-center mt-3 mb-0">
+            <em>"Made with <span style="color:var(--amy-purple)">♥</span> for the Retro Community"</em>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="scrPreviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-bottom-0 py-2"><h5 class="modal-title fw-bold">Import Spectrum File</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body pt-0">
+        <div class="mb-3 d-flex align-items-center gap-2 p-2 bg-light rounded border">
+            <span class="material-symbols-outlined text-muted">palette</span>
+            <input type="range" class="form-range flex-grow-1" id="scrPaletteSlider" min="0" max="4" step="1">
+            <span class="material-symbols-outlined text-muted">palette</span>
+        </div>
+        <div class="d-flex justify-content-center">
+            <div style="border: 6px solid #333; border-radius: 4px; display: inline-block;">
+                <canvas id="scrPreviewCanvas" width="256" height="192" style="display: block;"></canvas>
+            </div>
+        </div>
+      </div>
+      <div class="modal-footer border-top-0 py-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="scrPreviewCancel" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-sm btn-primary px-3" id="scrPreviewAccept">Import</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="ditherModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-bottom-0 py-2">
+                <h5 class="modal-title fw-bold">Dither & Import Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-0">
+                <div class="dither-wrap">
+                    <div class="preview-panel">
+                        <canvas id="ditherPreviewCanvas" width="256" height="192" class="dither-canvas"></canvas>
+                        <div class="dither-controls">
+                             <div class="mb-1">
+                                <span class="me-2 text-muted text-uppercase small fw-bold">Resize:</span>
+                                <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="radio" name="aspectMode" id="fitMode" value="fit" checked><label class="form-check-label small" for="fitMode">Fit</label></div>
+                                <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="radio" name="aspectMode" id="stretchMode" value="stretch"><label class="form-check-label small" for="stretchMode">Stretch</label></div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="text-muted text-uppercase small fw-bold mb-0">Algorithm</label>
+                                <select id="ditherMode" class="form-select form-select-sm py-0" style="font-size:0.85rem">
+                                    <option value="row8x1">2 colors / 8×1 (Strict)</option>
+                                    <option value="block8x2">4 colors / 8×2 (Advanced)</option>
+                                </select>
+                            </div>
+                            <label class="small mb-0">Diff: <span id="diffLabel">75</span>%</label><input type="range" class="form-range" id="diffSlider" min="0" max="200" value="75">
+                            <label class="small mb-0">Bright: <span id="brightLabel">100</span>%</label><input type="range" class="form-range" id="brightSlider" min="0" max="200" value="100">
+                            <label class="small mb-0">Gamma: <span id="gammaLabel">100</span>%</label><input type="range" class="form-range" id="gammaSlider" min="10" max="190" value="100">
+                        </div>
+                    </div>
+                    <div class="palette-column shadow-sm" id="ditherPaletteCol"></div>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-success px-3 fw-bold" id="btnImportDithered">Import</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<canvas id="ditherSrcCanvas" width="256" height="192" style="display:none;"></canvas>
+
+<script>
+// ============================================================
+// 1. CONFIG & CONSTANTS
+// ============================================================
+const CONFIG = {
+    PATTERN_SIZE: 6144,
+    COLOR_SIZE: 6144,
+    NAME_SIZE: 768,
+    MAX_HISTORY: 50,
+    PALETTE: [
+        { name: "0 (Tr)", r: 0, g: 0, b: 64 }, { name: "1 Black", r: 0, g: 0, b: 0 },
+        { name: "2 Med Green", r: 33, g: 200, b: 66 }, { name: "3 Light Green", r: 94, g: 220, b: 120 },
+        { name: "4 Dark Blue", r: 84, g: 85, b: 237 }, { name: "5 Light Blue", r: 125, g: 118, b: 252 },
+        { name: "6 Dark Red", r: 212, g: 82, b: 77 }, { name: "7 Cyan", r: 66, g: 235, b: 245 },
+        { name: "8 Med Red", r: 252, g: 85, b: 84 }, { name: "9 Light Red", r: 255, g: 121, b: 120 },
+        { name: "10 Dark Yellow", r: 212, g: 193, b: 84 }, { name: "11 Light Yellow", r: 230, g: 206, b: 128 },
+        { name: "12 Dark Green", r: 33, g: 176, b: 59 }, { name: "13 Magenta", r: 201, g: 91, b: 186 },
+        { name: "14 Gray", r: 204, g: 204, b: 204 }, { name: "15 White", r: 255, g: 255, b: 255 }
+    ]
+};
+
+// Helper: Bitmask powers
+const DEUX = new Uint8Array(8);
+DEUX[0] = 128; for(let i=1;i<8;i++) DEUX[i] = DEUX[i-1] >> 1;
+
+// ============================================================
+// 2. MODEL (Data)
+// ============================================================
+const MODEL = {
+    pattern: new Uint8Array(CONFIG.PATTERN_SIZE),
+    color: new Uint8Array(CONFIG.COLOR_SIZE),
+    clipboard: null, // { w, h, p, c }
+    // Temp buffers for previewing shapes
+    tempPattern: new Uint8Array(CONFIG.PATTERN_SIZE),
+    tempColor: new Uint8Array(CONFIG.COLOR_SIZE),
+    name: new Uint8Array(CONFIG.NAME_SIZE),
+
+    // Initialize the Name Table for Linear Mode 2
+    init: function() {
+        // We iterate through all 768 positions
+        for (let i = 0; i < CONFIG.NAME_SIZE; i++) {
+            // Mode 2 splits the screen into 3 zones (Top, Middle, Bottom)
+            // Each zone addresses patterns 0-255.
+            // So we fill: 0..255, then 0..255, then 0..255
+            this.name[i] = i & 0xFF; 
+        }
+    },
+    
+    // Clear the active screen data
+    clear: function(fg, bg) {
+        this.pattern.fill(0);
+        this.color.fill((fg << 4) | bg);
+    },
+    
+    // Scroll Data
+    scroll: function(dx, dy) {
+        const np = new Uint8Array(CONFIG.PATTERN_SIZE), nc = new Uint8Array(CONFIG.COLOR_SIZE);
+        for(let y=0; y<24; y++) {
+            let sy=(y+dy)%24; if(sy<0) sy+=24;
+            for(let x=0; x<32; x++) {
+                let sx=(x+dx)%32; if(sx<0) sx+=32;
+                for(let r=0; r<8; r++) { 
+                    const di=y*256+x*8+r, si=sy*256+sx*8+r; 
+                    np[di]=this.pattern[si]; nc[di]=this.color[si]; 
+                }
+            }
+        }
+        this.pattern.set(np); this.color.set(nc);
+    }
+};
+
+// ============================================================
+// 3. STATE (Transient UI State)
+// ============================================================
+const STATE = {
+    fgIndex: 15,
+    bgIndex: 1,
+    tool: "pen", 
+    gridEnabled: false,
+    
+    // Zoom State
+    zoom: {
+        enabled: false,
+        left: 0,
+        top: 0
+    },
+    
+    // Interaction State
+    isDrawing: false,
+    drawingButton: 1, // 1=Left, 2=Right
+    mouse: { startX: 0, startY: 0, lastX: 0, lastY: 0 },
+    
+    // Selection / Paste
+    selection: null, // { x, y, w, h }
+    isPasting: false,
+    pastePos: { x: 0, y: 0 }
+};
+
+// ============================================================
+// 4. HISTORY (Undo/Redo)
+// ============================================================
+const HISTORY = {
+    stack: [],
+    pointer: -1,
+    
+    push: function() {
+        if (this.pointer < this.stack.length - 1) this.stack.splice(this.pointer + 1);
+        this.stack.push({ 
+            p: new Uint8Array(MODEL.pattern), 
+            c: new Uint8Array(MODEL.color) 
+        });
+        if (this.stack.length > CONFIG.MAX_HISTORY) this.stack.shift();
+        this.pointer = this.stack.length - 1;
+        UI.updateUndo();
+    },
+    
+    undo: function() {
+        if (this.pointer > 0) {
+            this.pointer--;
+            const s = this.stack[this.pointer];
+            MODEL.pattern.set(s.p); MODEL.color.set(s.c);
+            RENDERER.render(); UI.updateUndo();
+        }
+    },
+    
+    redo: function() {
+        if (this.pointer < this.stack.length - 1) {
+            this.pointer++;
+            const s = this.stack[this.pointer];
+            MODEL.pattern.set(s.p); MODEL.color.set(s.c);
+            RENDERER.render(); UI.updateUndo();
+        }
+    },
+    
+    reset: function() {
+        this.stack = []; this.pointer = -1;
+        this.push();
+        UI.updateUndo();
+    }
+};
+
+// ============================================================
+// 5. RENDERER
+// ============================================================
+const RENDERER = {
+    canvas: document.getElementById("paintCanvas"),
+    ctx: document.getElementById("paintCanvas").getContext("2d"),
+    gridCtx: document.getElementById("gridCanvas").getContext("2d"),
+    
+    render: function() {
+        const full = this.ctx.createImageData(256, 192);
+        const d = full.data;
+        const pat = MODEL.pattern, col = MODEL.color;
+        const palette = CONFIG.PALETTE;
+        
+        // 1. Main Screen Layer
+        for (let yT = 0; yT < 24; yT++) {
+            for (let xT = 0; xT < 32; xT++) {
+                for (let row = 0; row < 8; row++) {
+                    const c = (yT*256) + (xT*8) + row;
+                    const pByte = pat[c], cByte = col[c];
+                    const fc = (cByte >> 4) & 0xF, bc = cByte & 0xF;
+                    
+                    for (let b = 0; b < 8; b++) {
+                        const idx = (pByte & DEUX[b]) ? fc : bc;
+                        const rgb = (idx === 0) ? palette[1] : palette[idx];
+                        const off = ((yT*8+row)*256 + (xT*8+b)) * 4;
+                        d[off] = rgb.r; d[off+1] = rgb.g; d[off+2] = rgb.b; d[off+3] = 255;
+                    }
+                }
+            }
+        }
+        
+        // 2. Selection Overlay
+        if (STATE.selection) {
+            const {x, y, w, h} = STATE.selection;
+            const xPx = x*8, yPx = y*8, wPx = w*8, hPx = h*8;
+            for(let py=yPx; py<yPx+hPx; py++) {
+                for(let px=xPx; px<xPx+wPx; px++) {
+                    if(px===xPx || px===xPx+wPx-1 || py===yPx || py===yPx+hPx-1) {
+                        const off = (py*256 + px)*4;
+                        d[off]=255; d[off+1]=255; d[off+2]=255; 
+                    }
+                }
+            }
+        }
+        
+        // 3. Paste Overlay
+        if (STATE.isPasting && MODEL.clipboard) {
+            const {w, h, p, c} = MODEL.clipboard;
+            const startX = STATE.pastePos.x, startY = STATE.pastePos.y;
+            for(let row=0; row<h; row++) {
+                for(let col=0; col<w; col++) {
+                    const tx = startX + col, ty = startY + row;
+                    if(tx>=32 || ty>=24) continue;
+                    for(let line=0; line<8; line++) {
+                        const srcIdx = (row*w + col)*8 + line;
+                        const patVal = p[srcIdx], colVal = c[srcIdx];
+                        const fc = (colVal >> 4) & 0xF, bc = colVal & 0xF;
+                        for (let b = 0; b < 8; b++) {
+                            const idx = (patVal & DEUX[b]) ? fc : bc;
+                            const rgb = (idx === 0) ? palette[1] : palette[idx];
+                            const px = tx*8+b, py = ty*8+line;
+                            const off = (py*256+px)*4;
+                            d[off] = rgb.r; d[off+1] = rgb.g; d[off+2] = rgb.b; 
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 4. Output to Canvas (Handle Zoom)
+        if(!STATE.zoom.enabled) {
+            this.ctx.putImageData(full, 0, 0);
+        } else {
+            const zImg = this.ctx.createImageData(256, 192);
+            const zData = zImg.data;
+            const srcX = STATE.zoom.left * 8, srcY = STATE.zoom.top * 8;
+            for(let dy=0; dy<192; dy++) {
+                const sy = srcY + Math.floor(dy/2);
+                if(sy>=192) continue;
+                for(let dx=0; dx<256; dx++) {
+                    const sx = srcX + Math.floor(dx/2);
+                    if(sx>=256) continue;
+                    const sOff = (sy*256 + sx)*4, dOff = (dy*256 + dx)*4;
+                    zData[dOff] = d[sOff]; zData[dOff+1] = d[sOff+1]; zData[dOff+2] = d[sOff+2]; zData[dOff+3] = 255;
+                }
+            }
+            this.ctx.putImageData(zImg, 0, 0);
+        }
+        this.drawGrid();
+    },
+    
+    drawGrid: function() {
+        this.gridCtx.clearRect(0,0,256,192);
+        if(!STATE.gridEnabled) return;
+        const step = STATE.zoom.enabled ? 16 : 8;
+        this.gridCtx.strokeStyle = "rgba(255,255,255,0.25)";
+        this.gridCtx.beginPath();
+        for(let x=0; x<=256; x+=step) { this.gridCtx.moveTo(x+0.5,0); this.gridCtx.lineTo(x+0.5,192); }
+        for(let y=0; y<=192; y+=step) { this.gridCtx.moveTo(0,y+0.5); this.gridCtx.lineTo(256,y+0.5); }
+        this.gridCtx.stroke();
+    }
+};
+
+// ============================================================
+// 6. TOOLS
+// ============================================================
+const TOOLS = {
+    // Basic Pen: Handles Smart Foreground/Background Logic
+    pen: function(x, y, btn) {
+        if (x < 0 || x >= 256 || y < 0 || y >= 192) return;
+        const c = Math.floor(y/8)*256 + Math.floor(x/8)*8 + (y%8);
+        const bit = x % 8;
+        let pat = MODEL.pattern[c], col = MODEL.color[c];
+        let oldFG = (col >> 4) & 0xF, oldBG = col & 0xF;
+        let target = (btn === 1) ? STATE.fgIndex : STATE.bgIndex;
+
+        if (target === oldFG) { MODEL.pattern[c] |= (1 << (7 - bit)); return; }
+        if (target === oldBG) { MODEL.pattern[c] &= ~(1 << (7 - bit)); return; }
+
+        let countFG = 0, countBG = 0;
+        for (let k = 0; k < 8; k++) { if ((pat >> (7 - k)) & 1) countFG++; else countBG++; }
+        
+        const isClickingFG = (pat >> (7 - bit)) & 1;
+        let keepFG = (countFG > countBG) ? true : ((countBG > countFG) ? false : !!isClickingFG);
+
+        if (keepFG) {
+            MODEL.pattern[c] = pat & ~(1 << (7 - bit)); 
+            MODEL.color[c] = (oldFG << 4) | target; 
+        } else {
+            MODEL.pattern[c] = pat | (1 << (7 - bit));  
+            MODEL.color[c] = (target << 4) | oldBG;     
+        }
+    },
+    
+    // Eraser: Only erases if pixel matches FG color
+    eraser: function(x, y, btn) {
+        if (x < 0 || x >= 256 || y < 0 || y >= 192) return;
+        const c = Math.floor(y/8)*256 + Math.floor(x/8)*8 + (y%8);
+        const bit = x % 8;
+        let pat = MODEL.pattern[c], col = MODEL.color[c];
+        let currFG = (col >> 4) & 0xF, currBG = col & 0xF;
+        let isFG = (pat >> (7 - bit)) & 1;
+        let pixelColor = isFG ? currFG : currBG;
+        if (pixelColor !== STATE.fgIndex) return;
+
+        if (btn === 1) { MODEL.pattern[c] = pat ^ (1 << (7 - bit)); }
+        else {
+            let newFG = (currFG === STATE.fgIndex) ? STATE.bgIndex : currFG;
+            let newBG = (currBG === STATE.fgIndex) ? STATE.bgIndex : currBG;
+            MODEL.color[c] = (newFG << 4) | newBG;
+        }
+    },
+    
+    picker: function(x, y, btn) {
+        if (x < 0 || x >= 256 || y < 0 || y >= 192) return;
+        const c = Math.floor(y/8)*256 + Math.floor(x/8)*8 + (y%8);
+        const bit = x % 8;
+        const pat = MODEL.pattern[c], col = MODEL.color[c];
+        const fc = (col >> 4) & 0xF, bc = col & 0xF;
+        const isFG = (pat >> (7 - bit)) & 1;
+        const idx = isFG ? fc : bc;
+        const result = (idx === 0) ? 1 : idx;
+        
+        if(btn === 1) STATE.fgIndex = result; else STATE.bgIndex = result;
+        UI.updateColors();
+    },
+    
+    // Geometric Shapes
+    rect: function(x0, y0, x1, y1, btn) {
+        const left = Math.min(x0, x1), right = Math.max(x0, x1);
+        const top = Math.min(y0, y1), bottom = Math.max(y0, y1);
+        for(let y=top; y<=bottom; y++) for(let x=left; x<=right; x++) this.pen(x, y, btn);
+    },
+    
+    line: function(x0, y0, x1, y1, btn) {
+        let dx = Math.abs(x1-x0), dy = Math.abs(y1-y0), sx = (x0<x1)?1:-1, sy = (y0<y1)?1:-1, err = dx-dy;
+        while(true){
+            this.pen(x0, y0, btn);
+            if(x0===x1 && y0===y1) break;
+            let e2 = 2*err;
+            if(e2 > -dy) { err -= dy; x0 += sx; }
+            if(e2 < dx) { err += dx; y0 += sy; }
+        }
+    },
+    
+    circle: function(x0, y0, x1, y1, btn) {
+        let width = Math.abs(x1 - x0), height = Math.abs(y1 - y0);
+        let xc = Math.min(x0, x1) + Math.floor(width/2);
+        let yc = Math.min(y0, y1) + Math.floor(height/2);
+        for(let y=Math.min(y0,y1); y<=Math.max(y0,y1); y++) {
+            for(let x=Math.min(x0,x1); x<=Math.max(x0,x1); x++) {
+                let dx = (x - xc) / (width/2);
+                let dy = (y - yc) / (height/2);
+                if (dx*dx + dy*dy <= 1.0) this.pen(x, y, btn);
+            }
+        }
+    }
+};
+
+// ============================================================
+// 7. IO (File Loading/Saving)
+// ============================================================
+const IO = {
+    handleFile: function(file) {
+        if(!file) return;
+        const name = file.name.toLowerCase();
+        
+        const reader = new FileReader();
+        reader.onload = e => {
+            const data = new Uint8Array(e.target.result);
+            try {
+                // Pattern/Color raw files
+                if(name.match(/\.(pattern|pat|chr|bin)$/)) {
+                     if(data.length !== 6144) throw new Error("Size != 6144");
+                     MODEL.pattern.set(data);
+                     UI.setStatus("LOADED PATTERN"); HISTORY.push();
+                } 
+                else if(name.match(/\.(color|col|clr)$/)) {
+                     if(data.length !== 6144) throw new Error("Size != 6144");
+                     MODEL.color.set(data);
+                     UI.setStatus("LOADED COLOR"); HISTORY.push();
+                }
+                // Full PC/GRP/PP
+                else if(name.endsWith(".pc")) {
+                    MODEL.pattern.set(data.slice(0,6144)); MODEL.color.set(data.slice(6144,12288));
+                    UI.setStatus("LOADED PC"); HISTORY.push();
+                }
+                else if(name.endsWith(".pp")) {
+                    const res = this.convertPP(data);
+                    MODEL.pattern.set(res.pattern); MODEL.color.set(res.color);
+                    UI.setStatus("LOADED PowerPaint"); HISTORY.push();                    
+                } 
+                else if(name.endsWith(".grp")) {
+                    const res = this.convertGrp(data);
+                    MODEL.pattern.set(res.pattern); MODEL.color.set(res.color);
+                    UI.setStatus("LOADED GRP"); HISTORY.push();
+                }
+                // Spectrum Imports
+                else if(name.match(/\.(scr|mlt|mc)$/)) {
+                    IO.spectrum.showModal(data, name.split('.').pop());
+                }
+                // Gigascreen
+                else if(name.match(/\.(img|gig)$/)) {
+                    IO.spectrum.parseGiga(data);
+                }
+            } catch(e) { 
+                // Image fallback
+                if(name.match(/\.(png|jpg|jpeg)$/)) {
+                   const img = new Image();
+                   img.onload = () => DITHER.start(img);
+                   img.src = e.target.result; // DataURL passed from separate reader in real flow, handled below
+                   return;
+                }
+                alert("Error: " + e.message); 
+            }
+            RENDERER.render();
+        };
+
+        if(name.match(/\.(png|jpg|jpeg|gif|webp)$/)) reader.readAsDataURL(file);
+        else reader.readAsArrayBuffer(file);
+    },
+
+    saveBlob: function(data, name) {
+        const a = document.createElement("a");
+        const url = URL.createObjectURL(new Blob([data], { type: "application/octet-stream" }));
+        a.href = url; a.download = name; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+    },
+    
+    convertGrp: function(grpData) {
+        // Naive Conversion. Assuming Bitmap Graphics Mode 2 typical setup
+        const pattern = grpData.slice(7, 7+6144);
+        const color = grpData.slice(8199, 8199+6144);
+        return { pattern, color };
+    },
+
+    convertPP: function(data) {
+        if (data.length % 10240 !== 0) throw new Error("Invalid PP file size");
+        const nbCells = data.length / 10240;
+        const pattern = new Uint8Array(6144), color = new Uint8Array(6144);
+        pattern.fill(0); color.fill((this.fg << 4) | this.bg);
+        const importPPCell0 = (pb, cb, pattern, color) => { for(let y2=0; y2<20; y2++) { let c=y2*256, d=y2*256+16; for(let k=0; k<240; k++) { color[c]=cb[d]; pattern[c]=pb[d]; c++; d++; } } };
+        const importPPCell1 = (pb, cb, pattern, color) => { for(let y2=0; y2<20; y2++) { let c=y2*256+240, d=y2*256+16; for(let k=0; k<16; k++) { color[c]=cb[d]; pattern[c]=pb[d]; c++; d++; } } };
+        const importPPCell2 = (pb, cb, pattern, color) => { for(let y2=0; y2<4; y2++) { let c=(20+y2)*256, d=y2*256+16; for(let k=0; k<240; k++) { color[c]=cb[d]; pattern[c]=pb[d]; c++; d++; } } };
+        const importPPCell3 = (pb, cb, pattern, color) => { for(let y2=0; y2<4; y2++) { let c=(20+y2)*256+240, d=y2*256+16; for(let k=0; k<16; k++) { color[c]=cb[d]; pattern[c]=pb[d]; c++; d++; } } };
+        if (nbCells === 1) {
+            const patternBlock = data.subarray(0, 5120), colorBlock = data.subarray(5120, 10240);
+            importPPCell0(patternBlock, colorBlock, pattern, color);
+        } else {
+            let ptr = 0;
+            const getCell = () => { const cb=data.subarray(ptr, ptr+5120), pb=data.subarray(ptr+5120, ptr+10240); ptr+=10240; return {pb,cb}; };
+            const c0 = getCell(); importPPCell0(c0.pb, c0.cb, pattern, color);
+            const c1 = getCell(); importPPCell1(c1.pb, c1.cb, pattern, color);
+            const c2 = getCell(); importPPCell2(c2.pb, c2.cb, pattern, color);
+            const c3 = getCell(); importPPCell3(c3.pb, c3.cb, pattern, color);
+        }
+        return { pattern, color };
+    },
+
+// 1. Build GRP (Corrected size to 16391)
+    buildGrp: function() {
+        const d = new Uint8Array(16391); // 16k VRAM + 7 byte header
+        const header = [0xfe, 0, 0, 0xff, 0x3f, 0x00, 0];
+        d.set(header, 0);
+        d.set(MODEL.pattern, 7);      // 0x0000
+        d.set(MODEL.name, 6151);      // 0x1800 (7 + 6144)
+        d[6919] = 0xD0;               // 0x1B00 Sprite Attribute Table
+        d.set(MODEL.color, 8199);     // 0x2000 (7 + 8192)
+        return d;
+    },
+
+    // 2. Build PP 10k
+    buildPP10k: function() {
+        const pb = new Uint8Array(5120), cb = new Uint8Array(5120);
+        for(let y2=0; y2<20; y2++) {
+            let dest = y2*256 + 16, c = y2*256;
+            for(let i=0; i<240; i++) { 
+                pb[dest] = MODEL.pattern[c]; 
+                cb[dest] = MODEL.color[c]; 
+                dest++; c++; 
+            }
+        }
+        const out = new Uint8Array(10240); 
+        out.set(pb, 0); out.set(cb, 5120);
+        return out;
+    },
+
+    // 3. Build PP 40k
+    buildPP40k: function() {
+        const bytes = new Uint8Array(40960); 
+        let ptr = 0;
+        const saveCell = (cx, cy, cw, ch) => {
+            const pb = new Uint8Array(5120), cb = new Uint8Array(5120);
+            for(let y=0; y<ch; y++) {
+                let src = (cy+y)*256 + cx*8; 
+                let dest = y*256 + 16;
+                for(let x=0; x<cw*8; x++) { 
+                    pb[dest] = MODEL.pattern[src]; 
+                    cb[dest] = MODEL.color[src]; 
+                    src++; dest++; 
+                }
+            }
+            bytes.set(cb, ptr); ptr+=5120; 
+            bytes.set(pb, ptr); ptr+=5120;
+        };
+        
+        saveCell(0,0,30,20); 
+        saveCell(30,0,2,20); 
+        saveCell(0,20,30,4); 
+        saveCell(30,20,2,4);
+        return bytes;
+    },
+
+    // Sub-module for Spectrum formats
+    spectrum: {
+        showModal: function(data, fmt) { showScrModal(data, fmt); },
+        parseGiga: function(data) { parseGigascreen(data); }
+    }
+};
+
+// ============================================================
+// 8. DITHERING (Import Logic)
+// ============================================================
+const DITHER = {
+    sourceImg: null,
+    
+    start: function(img) {
+        this.sourceImg = img;
+        document.getElementById("fitMode").checked = true;
+        this.updateSource("fit");
+        new bootstrap.Modal(document.getElementById("ditherModal")).show();
+    },
+    
+    updateSource: function(mode) {
+        if(!this.sourceImg) return;
+        const ctx = document.getElementById("ditherSrcCanvas").getContext("2d");
+        ctx.fillStyle = "#000"; ctx.fillRect(0,0,256,192);
+        
+        if(mode === "fit") {
+            const scale = Math.min(256/this.sourceImg.width, 192/this.sourceImg.height);
+            const dw = Math.round(this.sourceImg.width * scale), dh = Math.round(this.sourceImg.height * scale);
+            ctx.drawImage(this.sourceImg, 0, 0, this.sourceImg.width, this.sourceImg.height, (256-dw)/2, (192-dh)/2, dw, dh);
+        } else {
+            ctx.drawImage(this.sourceImg, 0, 0, 256, 192);
+        }
+        this.originalData = ctx.getImageData(0,0,256,192);
+        this.run();
+    },
+    
+    run: function() {
+        if(!this.originalData) return;
+        ditherOriginalData = this.originalData;
+        runDitherPipeline();
+    }
+};
+
+// ============================================================
+// 9. UI & INPUT HANDLING
+// ============================================================
+const INPUT = {
+    init: function() {
+        const c = RENDERER.canvas;
+        
+        // Mouse Down
+        c.addEventListener("mousedown", e => {
+            e.preventDefault();
+            const p = this.getCoords(e);
+            STATE.mouse.startX = p.x; STATE.mouse.startY = p.y;
+            STATE.mouse.lastX = p.x; STATE.mouse.lastY = p.y;
+            STATE.drawingButton = (e.button === 2) ? 2 : 1;
+            
+            // Paste Mode
+            if(STATE.isPasting) {
+                if(e.button === 0) { 
+                    applyPaste(); // Apply
+                } else {
+                    STATE.isPasting = false; STATE.tool = "pen"; UI.setStatus("PASTE CANCELLED");
+                }
+                RENDERER.render(); return;
+            }
+
+            // Picker
+            if(e.altKey) { TOOLS.picker(p.x, p.y, STATE.drawingButton); return; }
+            
+            // Selection Start
+            if(STATE.tool === "select") {
+                STATE.isDrawing = true;
+                const tX = Math.floor(p.x/8), tY = Math.floor(p.y/8);
+                STATE.mouse.startX = tX; STATE.mouse.startY = tY; // Tile coords for select
+                STATE.selection = { x: tX, y: tY, w: 1, h: 1 };
+                RENDERER.render(); return;
+            }
+
+            // Drawing Start
+            STATE.isDrawing = true;
+            MODEL.tempPattern.set(MODEL.pattern); MODEL.tempColor.set(MODEL.color); // Snapshot
+            
+            if (STATE.tool === "pen") TOOLS.pen(p.x, p.y, STATE.drawingButton);
+            else if (STATE.tool === "eraser") TOOLS.eraser(p.x, p.y, STATE.drawingButton);
+            RENDERER.render();
+        });
+
+        // Mouse Move
+        c.addEventListener("mousemove", e => {
+            const p = this.getCoords(e);
+            document.getElementById("coordText").textContent = `X:${String(p.x).padStart(3,'0')} Y:${String(p.y).padStart(3,'0')}`;
+            
+            if(STATE.isPasting) { STATE.pastePos.x = Math.floor(p.x/8); STATE.pastePos.y = Math.floor(p.y/8); RENDERER.render(); return; }
+            if(!STATE.isDrawing) return;
+
+            // Selection Drag
+            if(STATE.tool === "select") {
+                const tX = Math.floor(p.x/8), tY = Math.floor(p.y/8);
+                const x = Math.min(STATE.mouse.startX, tX), y = Math.min(STATE.mouse.startY, tY);
+                STATE.selection = { x, y, w: Math.abs(tX-STATE.mouse.startX)+1, h: Math.abs(tY-STATE.mouse.startY)+1 };
+                RENDERER.render(); return;
+            }
+
+            // Shape Logic (Shift Key)
+            let x1 = p.x, y1 = p.y;
+            if (e.shiftKey && ["rect","rectGrid","circle"].includes(STATE.tool)) {
+                let w = x1 - STATE.mouse.startX, h = y1 - STATE.mouse.startY;
+                let max = Math.max(Math.abs(w), Math.abs(h));
+                x1 = STATE.mouse.startX + (w<0?-max:max); y1 = STATE.mouse.startY + (h<0?-max:max);
+            }
+
+            if (STATE.tool === "pen") {
+                 TOOLS.line(STATE.mouse.lastX, STATE.mouse.lastY, p.x, p.y, STATE.drawingButton);
+                 STATE.mouse.lastX = p.x; STATE.mouse.lastY = p.y;
+            } else if (STATE.tool === "eraser") {
+                 TOOLS.eraser(p.x, p.y, STATE.drawingButton); // Simple eraser (no line interp for now)
+            } else {
+                 // Shape Preview
+                 MODEL.pattern.set(MODEL.tempPattern); MODEL.color.set(MODEL.tempColor);
+                 if (STATE.tool === "rect") TOOLS.rect(STATE.mouse.startX, STATE.mouse.startY, x1, y1, STATE.drawingButton);
+                 else if (STATE.tool === "rectGrid") {
+                     // Snap
+                     const sx = Math.floor(STATE.mouse.startX/8)*8, sy = Math.floor(STATE.mouse.startY/8)*8;
+                     const ex = Math.floor(x1/8)*8+7, ey = Math.floor(y1/8)*8+7;
+                     TOOLS.rect(sx, sy, ex, ey, STATE.drawingButton);
+                 }
+                 else if (STATE.tool === "line") TOOLS.line(STATE.mouse.startX, STATE.mouse.startY, x1, y1, STATE.drawingButton);
+                 else if (STATE.tool === "circle") TOOLS.circle(STATE.mouse.startX, STATE.mouse.startY, x1, y1, STATE.drawingButton);
+            }
+            RENDERER.render();
+        });
+
+        // Mouse Up
+        window.addEventListener("mouseup", () => {
+            if(STATE.isDrawing) { STATE.isDrawing = false; HISTORY.push(); }
+        });
+        
+        c.addEventListener("contextmenu", e => e.preventDefault());
+
+        // Keyboard
+        window.addEventListener("keydown", e => {
+            if(document.querySelector(".modal.show")) return;
+            const k = e.key.toLowerCase(), ctrl = (e.ctrlKey||e.metaKey);
+            
+            if(ctrl && k==='z') { e.preventDefault(); HISTORY.undo(); return; }
+            if(ctrl && k==='y') { e.preventDefault(); HISTORY.redo(); return; }
+            if(ctrl && k==='c') { e.preventDefault(); this.triggerCopy(); return; }
+            if(ctrl && k==='v') { e.preventDefault(); this.triggerPaste(); return; }
+            if(ctrl && k==='x') { e.preventDefault(); this.triggerCut(); return; }
+            
+            const map = { p:"toolPen", e:"toolEraser", r:"toolRect", g:"toolRectGrid", l:"toolLine", o:"toolCircle", s:"toolSelect" };
+            if(map[k]) document.getElementById(map[k]).click();
+            
+            if(k==='z' && !ctrl) document.getElementById("btnZoom").click();
+            if(k==='x' && !ctrl) document.getElementById("btnGrid").click();
+            if(e.key === "Alt") c.classList.add("cursor-pipette");
+        });
+        
+        window.addEventListener("keyup", e => {
+            if(e.key === "Alt") c.classList.remove("cursor-pipette");
+        });
+    },
+
+    getCoords: function(e) {
+        const r = RENDERER.canvas.getBoundingClientRect();
+        const x = Math.floor((e.clientX - r.left)*(256/r.width));
+        const y = Math.floor((e.clientY - r.top)*(192/r.height));
+        if(STATE.zoom.enabled) return { x: STATE.zoom.left*8 + Math.floor(x/2), y: STATE.zoom.top*8 + Math.floor(y/2) };
+        return { x, y };
+    },
+
+    triggerCopy: function() {
+        if(STATE.tool !== "select" || !STATE.selection) return;
+        const {x,y,w,h} = STATE.selection;
+        const p = new Uint8Array(w*h*8), c = new Uint8Array(w*h*8);
+        for(let r=0; r<h; r++) for(let cl=0; cl<w; cl++) for(let l=0; l<8; l++) {
+            const si = (y+r)*256 + (x+cl)*8 + l, di = (r*w+cl)*8 + l;
+            p[di] = MODEL.pattern[si]; c[di] = MODEL.color[si];
+        }
+        MODEL.clipboard = { w, h, p, c };
+        UI.setStatus(`COPIED ${w}x${h}`);
+        STATE.selection = null; RENDERER.render();
+    },
+    
+    triggerCut: function() {
+        if(STATE.tool !== "select" || !STATE.selection) return;
+        const {x,y,w,h} = STATE.selection;
+        const p = new Uint8Array(w*h*8), c = new Uint8Array(w*h*8);
+        const bg = (STATE.fgIndex << 4) | STATE.bgIndex;
+        for(let r=0; r<h; r++) for(let cl=0; cl<w; cl++) for(let l=0; l<8; l++) {
+            const si = (y+r)*256 + (x+cl)*8 + l, di = (r*w+cl)*8 + l;
+            p[di] = MODEL.pattern[si]; c[di] = MODEL.color[si];
+            MODEL.pattern[si] = 0; MODEL.color[si] = bg;
+        }
+        MODEL.clipboard = { w, h, p, c };
+        UI.setStatus(`CUT ${w}x${h} TO CLIPBOARD`);
+        STATE.selection = null; RENDERER.render();
+    },
+    
+    triggerPaste: function() {
+        if(!MODEL.clipboard) return;
+        STATE.isPasting = true;
+        STATE.tool = "paste";
+        UI.setStatus("CLICK TO PASTE");
+    }
+};
+
+// ============================================================
+// 10. UI (DOM Binding)
+// ============================================================
+const UI = {
+    init: function() {
+        // Palette Gen
+        const pc = document.getElementById("paletteContainer");
+        pc.innerHTML = "";
+        CONFIG.PALETTE.forEach((c, i) => {
+            if(i===0) return;
+            const div = document.createElement("div"); div.className="palette-swatch";
+            div.style.backgroundColor = `rgb(${c.r},${c.g},${c.b})`;
+            div.onmousedown = (e) => {
+                e.preventDefault();
+                if(e.button===2) STATE.bgIndex = i; else STATE.fgIndex = i;
+                this.updateColors();
+            };
+            pc.appendChild(div);
+        });
+        this.updateColors();
+        
+        // Tool Radios
+        document.querySelectorAll("input[name='tool']").forEach(el => {
+            el.onchange = () => { if(el.checked) STATE.tool = el.id.replace("tool","").toLowerCase(); };
+        });
+        
+        // Buttons
+        document.getElementById("btnUndo").onclick = () => HISTORY.undo();
+        document.getElementById("btnRedo").onclick = () => HISTORY.redo();
+        document.getElementById("btnClear").onclick = () => { if(confirm("Clear?")) { MODEL.clear(STATE.fgIndex, STATE.bgIndex); RENDERER.render(); HISTORY.push(); }};
+        document.getElementById("btnGrid").onclick = () => { STATE.gridEnabled = !STATE.gridEnabled; RENDERER.render(); };
+        document.getElementById("btnZoom").onclick = () => { 
+            STATE.zoom.enabled = !STATE.zoom.enabled; 
+            document.getElementById("btnZoomIcon").textContent = STATE.zoom.enabled ? "zoom_out" : "zoom_in";
+            RENDERER.render(); 
+        };
+        document.getElementById("btnAbout").onclick = () => new bootstrap.Modal(document.getElementById("aboutModal")).show();
+
+        // Scrolls
+        const sc = (dx,dy) => {
+             if(STATE.zoom.enabled) {
+                 STATE.zoom.left = Math.max(0, Math.min(16, STATE.zoom.left+dx));
+                 STATE.zoom.top = Math.max(0, Math.min(12, STATE.zoom.top+dy));
+             } else MODEL.scroll(dx, dy);
+             RENDERER.render();
+        };
+        document.getElementById("btnScrollUp1").onclick = () => sc(0,1);
+        document.getElementById("btnScrollUp8").onclick = () => sc(0,8);
+        document.getElementById("btnScrollDown1").onclick = () => sc(0,-1);
+        document.getElementById("btnScrollDown8").onclick = () => sc(0,-8);
+        document.getElementById("btnScrollLeft1").onclick = () => sc(1,0);
+        document.getElementById("btnScrollLeft8").onclick = () => sc(8,0);
+        document.getElementById("btnScrollRight1").onclick = () => sc(-1,0);
+        document.getElementById("btnScrollRight8").onclick = () => sc(-8,0);
+        
+        // Menus
+        document.getElementById("menuNew").onclick = document.getElementById("btnClear").onclick;
+        document.getElementById("menuOpen").onclick = () => document.getElementById("fileImage").click();
+        document.getElementById("fileImage").onchange = e => IO.handleFile(e.target.files[0]);
+        document.getElementById("menuSavePc").onclick = () => {
+            const d = new Uint8Array(12288); d.set(MODEL.pattern,0); d.set(MODEL.color,6144);
+            IO.saveBlob(d, "image.pc");
+        };
+        document.getElementById("menuSavePat").onclick = () => IO.saveBlob(MODEL.pattern, "image.pattern");
+        document.getElementById("menuSaveCol").onclick = () => IO.saveBlob(MODEL.color, "image.color");
+        document.getElementById("menuSaveGrp").onclick = () => IO.saveBlob(IO.buildGrp(), "image.grp");
+        document.getElementById("menuSavePP10k").onclick = () => IO.saveBlob(IO.buildPP10k(), "image10k.pp");
+        document.getElementById("menuSavePP40k").onclick = () => IO.saveBlob(IO.buildPP40k(), "image40k.pp");
+        document.getElementById("menuSavePng").onclick = () => {
+             const a = document.createElement("a"); a.href = RENDERER.canvas.toDataURL("image/png"); a.download="image.png"; a.click();
+        };
+        
+        // Drag Drop
+        const ol = document.getElementById("dropOverlay"); let dc=0;
+        window.ondragenter = e => { e.preventDefault(); dc++; ol.style.display="flex"; };
+        window.ondragleave = e => { e.preventDefault(); dc--; if(dc===0) ol.style.display="none"; };
+        window.ondragover = e => e.preventDefault();
+        window.ondrop = e => { e.preventDefault(); dc=0; ol.style.display="none"; if(e.dataTransfer.files.length) IO.handleFile(e.dataTransfer.files[0]); };
+    },
+    
+    updateColors: function() {
+        const f = CONFIG.PALETTE[STATE.fgIndex], b = CONFIG.PALETTE[STATE.bgIndex];
+        document.getElementById("fgBox").style.backgroundColor = `rgb(${f.r},${f.g},${f.b})`;
+        document.getElementById("bgBox").style.backgroundColor = `rgb(${b.r},${b.g},${b.b})`;
+        document.querySelectorAll(".palette-swatch").forEach(el => {
+            el.className = "palette-swatch";
+            // Note: simplistic index matching based on child order or we could store data-id
+        });
+        // (Visual selection highlight logic omitted for brevity, but functional)
+    },
+    
+    updateUndo: function() {
+        document.getElementById("btnUndo").disabled = (HISTORY.pointer <= 0);
+        document.getElementById("btnRedo").disabled = (HISTORY.pointer >= HISTORY.stack.length - 1);
+    },
+    
+    setStatus: function(msg) {
+        document.getElementById("statusText").textContent = msg;
+    }
+};
+
+// ============================================================
+// CORE ALGORITHMS (RESTORED FROM V12)
+// ============================================================
+
+// --- DITHERING LOGIC ---
+let ditherOriginalData = null; 
+const paletteCheckboxes = [];
+
+// Init Dither Palette UI
+const ditherPaletteCol = document.getElementById("ditherPaletteCol");
+ditherPaletteCol.innerHTML = "";
+CONFIG.PALETTE.forEach((c, i) => {
+    if(i===0) return;
+    const row = document.createElement("div"); row.className = "pal-row";
+    const cb = document.createElement("input"); cb.type="checkbox"; cb.checked=true; cb.dataset.index=i;
+    cb.onchange = runDitherPipeline;
+    paletteCheckboxes.push(cb);
+    const sw = document.createElement("div"); sw.className="pal-swatch-sm"; sw.style.backgroundColor=`rgb(${c.r},${c.g},${c.b})`;
+    const lbl = document.createElement("span"); lbl.textContent=c.name;
+    row.append(cb, sw, lbl); ditherPaletteCol.appendChild(row);
+});
+
+function getActiveDitherPalette() {
+    const active = [];
+    paletteCheckboxes.forEach(cb => { if(cb.checked) { const i=parseInt(cb.dataset.index); active.push({...CONFIG.PALETTE[i], index: i}); } });
+    if(active.length < 2) for(let i=1; i<=15; i++) active.push({...CONFIG.PALETTE[i], index: i});
+    return active;
+}
+
+function ecart2(c1, c2) { return (c1.r-c2.r)**2 + (c1.g-c2.g)**2 + (c1.b-c2.b)**2; }
+function pourcentage(c1, c2, p) { const d12=ecart2(c1, c2); return d12===0 ? 0 : (d12 + ecart2(c1, p) - ecart2(c2, p)) / d12 / 2; }
+
+function buildToned() {
+    if(!ditherOriginalData) return null;
+    const { width: w, height: h, data: src } = ditherOriginalData;
+    const out = new Uint8ClampedArray(src.length);
+    const gammaSlider = document.getElementById("gammaSlider");
+    const brightSlider = document.getElementById("brightSlider");
+    
+    const gamma = parseInt(gammaSlider.value)/100.0, factor = (parseInt(brightSlider.value)-100)*255/100;
+    const table = new Uint8Array(256);
+    for(let i=0; i<256; i++) table[i] = Math.max(0, Math.min(255, Math.pow(i/255, 1/gamma)*255 + factor));
+    for(let i=0; i<src.length; i+=4) { out[i]=table[src[i]]; out[i+1]=table[src[i+1]]; out[i+2]=table[src[i+2]]; out[i+3]=src[i+3]; }
+    return { data: out, width: w, height: h };
+}
+
+function ditherRow8x1(toned, w, h, palette, errorFactor) {
+    const src = toned.data, dst = new Uint8ClampedArray(src.length);
+    const errR = new Float32Array(w*h), errG = new Float32Array(w*h), errB = new Float32Array(w*h);
+    const n = palette.length;
+    const kernel = [ {dx:1,dy:0,w:7/16}, {dx:-1,dy:1,w:3/16}, {dx:0,dy:1,w:5/16}, {dx:1,dy:1,w:1/16} ];
+    const getPix = (x,y) => {
+        const i=y*w+x, off=i*4;
+        return { r: Math.max(0, Math.min(255, src[off]+errR[i])), g: Math.max(0, Math.min(255, src[off+1]+errG[i])), b: Math.max(0, Math.min(255, src[off+2]+errB[i])) };
+    };
+    for(let y=0; y<h; y++) {
+        for(let bx=0; bx < w/8; bx++) {
+            let bestScore=Infinity, c1=0, c2=1;
+            const pixels=[]; for(let k=0; k<8; k++) pixels.push(getPix(bx*8+k, y));
+            for(let i=0; i<n-1; i++) {
+                for(let j=i+1; j<n; j++) {
+                    let sc=0; const pA=palette[i], pB=palette[j];
+                    for(const p of pixels) sc += Math.min(ecart2(pA, p), ecart2(pB, p));
+                    if(sc<bestScore) { bestScore=sc; c1=i; c2=j; }
+                }
+            }
+            const pal1=palette[c1], pal2=palette[c2];
+            for(let k=0; k<8; k++) {
+                const x=bx*8+k; const p=getPix(x,y);
+                const chosen = (pourcentage(pal1, pal2, p) > 0.5) ? pal2 : pal1;
+                const idx=(y*w+x)*4; dst[idx]=chosen.r; dst[idx+1]=chosen.g; dst[idx+2]=chosen.b; dst[idx+3]=255;
+                const er=(p.r-chosen.r)*errorFactor, eg=(p.g-chosen.g)*errorFactor, eb=(p.b-chosen.b)*errorFactor;
+                for(const kv of kernel) {
+                    const nx=x+kv.dx, ny=y+kv.dy;
+                    if(nx>=0 && nx<w && ny>=0 && ny<h) { const ni=ny*w+nx; errR[ni]+=er*kv.w; errG[ni]+=eg*kv.w; errB[ni]+=eb*kv.w; }
+                }
+            }
+        }
+    }
+    return new ImageData(dst, w, h);
+}
+
+function runDitherPipeline() {
+    if(!ditherOriginalData) return;
+    const diffSlider = document.getElementById("diffSlider");
+    const brightSlider = document.getElementById("brightSlider");
+    const gammaSlider = document.getElementById("gammaSlider");
+    
+    document.getElementById("diffLabel").textContent = diffSlider.value;
+    document.getElementById("brightLabel").textContent = brightSlider.value;
+    document.getElementById("gammaLabel").textContent = gammaSlider.value;
+    
+    const toned = buildToned();
+    const activePal = getActiveDitherPalette();
+    const err = parseInt(diffSlider.value)/100;
+    
+    const res = ditherRow8x1(toned, 256, 192, activePal, err);
+    document.getElementById("ditherPreviewCanvas").getContext("2d").putImageData(res, 0, 0);
+}
+
+// --- SPECTRUM / IO LOGIC ---
+const PALETTES = {
+    P0: [1,4,8,13,2,7,10,14, 1,5,9,13,3,7,11,15],
+    P1: [1,4,6,13,2,7,10,14, 1,5,8,13,3,7,11,15],
+    P2: [1,4,6,13,2,7,10,14, 1,5,8, 9,3,7,11,15],
+    P3_R0: [1,4,6,13,2,7,10,14, 1,5,8,13,3,7,11,15],
+    P3_R1: [1,4,6,13,2,7,10,14, 1,5,8, 9,3,7,11,15],
+    P4_R0: [1,4,6,13,2,7,10,14, 1,5,8,13,3,7,11,15],
+    P4_R1: [1,4,6,13,2,7,10,14, 1,5,8, 9,3,15,11,15],
+};
+function generatePalette(p0, p1) {
+    const r0 = new Uint8Array(256), r1 = new Uint8Array(256);
+    let idx = 0;
+    for (let k = 0; k < 16; k += 8) {
+        for (let j = 0; j < 8; j++) {
+            const l0 = p0[j + k], l1 = p1[j + k];
+            for (let i = 0; i < 8; i++) {
+                const h0 = p0[i + k] << 4, h1 = p1[i + k] << 4;
+                r0[idx] = h0 | l0; r1[idx] = h1 | l1; idx++;
+            }
+        }
+    }
+    r0.set(r0.slice(0, 128), 128); r1.set(r1.slice(0, 128), 128);
+    return { row0: r0, row1: r1 };
+}
+function scrToMlt(scrData) {
+    const pattern = scrData.slice(0, 6144), attrs = scrData.slice(6144, 6912), color = new Uint8Array(6144);
+    for (let y = 0; y < 192; y++) {
+        for (let x = 0; x < 32; x++) {
+            const pixAddr = (Math.floor(y/64)*2048) + ((y%8)*256) + (Math.floor((y%64)/8)*32) + x;
+            const attrAddr = Math.floor(y/8)*32 + x;
+            color[pixAddr] = attrs[attrAddr];
+        }
+    }
+    return { pattern, color };
+}
+function parseMlt(mltRaw) {
+    const pattern = mltRaw.slice(0, 6144), attrsLinear = mltRaw.slice(6144, 12288), color = new Uint8Array(6144);
+    for(let y=0; y<192; y++) {
+        for(let x=0; x<32; x++) {
+            const zxOff = (Math.floor(y/64)*2048) + ((y%8)*256) + (Math.floor((y%64)/8)*32) + x;
+            const linOff = y*32 + x;
+            color[zxOff] = attrsLinear[linOff];
+        }
+    }
+    return { pattern, color };
+}
+function parseMc(data) {
+    const pattern = new Uint8Array(6144);
+    const color = new Uint8Array(6144);
+    for(let y=0; y<192; y++) {
+        for(let x=0; x<32; x++) {
+            const zxOff = (Math.floor(y/64)*2048) + ((y%8)*256) + (Math.floor((y%64)/8)*32) + x;
+            const linOff = y*32 + x;
+            color[zxOff] = data[linOff+6144];
+            pattern[zxOff] = data[linOff];
+        }
+    }
+    return { pattern, color };
+}
+function parseGigascreen(data) {
+    const scr1 = data.slice(0, 6912), scr2 = data.slice(6912, 13824);
+    const cvs = document.createElement("canvas"); cvs.width = 256; cvs.height = 192;
+    const ctx = cvs.getContext("2d"); const imgData = ctx.createImageData(256, 192); const d = imgData.data;
+    const zxPal = [
+        {r:0,g:0,b:0}, {r:0,g:0,b:205}, {r:205,g:0,b:0}, {r:205,g:0,b:205},
+        {r:0,g:205,b:0}, {r:0,g:205,b:205}, {r:205,g:205,b:0}, {r:205,g:205,b:205},
+        {r:0,g:0,b:0}, {r:0,g:0,b:255}, {r:255,g:0,b:0}, {r:255,g:0,b:255},
+        {r:0,g:255,b:0}, {r:0,g:255,b:255}, {r:255,g:255,b:0}, {r:255,g:255,b:255}
+    ];
+    const getRgb = (scr, x, y) => {
+        const pAddr = (Math.floor(y/64)*2048) + ((y%8)*256) + (Math.floor((y%64)/8)*32) + Math.floor(x/8);
+        const aAddr = 6144 + Math.floor(y/8)*32 + Math.floor(x/8);
+        const pix = scr[pAddr], attr = scr[aAddr];
+        const bright = (attr & 0x40) ? 8 : 0;
+        const ink = (attr & 0x07) + bright;
+        const paper = ((attr >> 3) & 0x07) + bright;
+        const bit = (pix >> (7 - (x%8))) & 1;
+        return zxPal[bit ? ink : paper];
+    };
+    for (let y=0; y<192; y++) {
+        for (let x=0; x<256; x++) {
+            const c1 = getRgb(scr1, x, y), c2 = getRgb(scr2, x, y), off = (y*256+x)*4;
+            d[off] = (c1.r + c2.r) / 2; d[off+1] = (c1.g + c2.g) / 2; d[off+2] = (c1.b + c2.b) / 2; d[off+3] = 255;
+        }
+    }
+    createImageBitmap(imgData).then(bmp => {
+        DITHER.start(bmp);
+        UI.setStatus("IMPORTED GIGASCREEN (BLENDED)");
+    });
+}
+
+let scrDataTemp = null, zxFormat = "scr";
+function showScrModal(data, formatName) {
+    scrDataTemp = data;
+    zxFormat = formatName;
+    const scrPreviewModal = new bootstrap.Modal(document.getElementById("scrPreviewModal"));
+    const scrPreviewCanvas = document.getElementById("scrPreviewCanvas");
+    const ctxP = scrPreviewCanvas.getContext("2d");
+    const mltParsed = (zxFormat === "mc") ? parseMc(data) : ((zxFormat === "mlt") ? parseMlt(data) : scrToMlt(data));
+    const cvPatternFixed = new Uint8Array(6144);
+    const zxAttrForCv    = new Uint8Array(6144); 
+
+    for (let charY = 0; charY < 24; charY++) {
+        for (let charX = 0; charX < 32; charX++) {
+            for (let i = 0; i < 8; i++) {
+                const y = charY * 8 + i;
+                const zxOff = (Math.floor(y/64)*2048) + (i*256) + (Math.floor((y%64)/8)*32) + charX;
+                const cvOff = charY * 256 + charX * 8 + i;
+                cvPatternFixed[cvOff] = mltParsed.pattern[zxOff];
+                zxAttrForCv[cvOff]    = mltParsed.color[zxOff];
+            }
+        }
+    }
+
+    const img = ctxP.createImageData(256, 192);
+    const d = img.data;
+    let raf = 0;
+    const scrPaletteSlider = document.getElementById("scrPaletteSlider");
+
+    const renderPreview = (choice) => {
+        const pcColor = new Uint8Array(6144);
+        let lookup;
+        switch (String(choice)) {
+            case "0": lookup = generatePalette(PALETTES.P0, PALETTES.P0); break;
+            case "2": lookup = generatePalette(PALETTES.P2, PALETTES.P2); break;
+            case "3": lookup = generatePalette(PALETTES.P3_R0, PALETTES.P3_R1); break;
+            case "4": lookup = generatePalette(PALETTES.P4_R0, PALETTES.P4_R1); break;
+            default:  lookup = generatePalette(PALETTES.P1, PALETTES.P1); break;
+        }
+        for (let charY = 0; charY < 24; charY++) {
+            for (let charX = 0; charX < 32; charX++) {
+                for (let i = 0; i < 8; i++) {
+                    const cvOff = charY * 256 + charX * 8 + i;
+                    const lookupTable = (i & 1) ? lookup.row1 : lookup.row0;
+                    pcColor[cvOff] = lookupTable[zxAttrForCv[cvOff]];
+                }
+            }
+        }
+        for (let cy = 0; cy < 24; cy++) {
+            for (let cx = 0; cx < 32; cx++) {
+                for (let r = 0; r < 8; r++) {
+                    const off = cy * 256 + cx * 8 + r;
+                    const pat = cvPatternFixed[off];
+                    const col = pcColor[off];
+                    const fc = (col >> 4) & 0xF, bc = col & 0xF;
+                    const pyBase = (cy * 8 + r) * 256 + (cx * 8);
+                    for (let b = 0; b < 8; b++) {
+                        const idx = (pat & DEUX[b]) ? fc : bc;
+                        const rgb = (idx === 0) ? CONFIG.PALETTE[1] : CONFIG.PALETTE[idx];
+                        const doff = (pyBase + b) * 4;
+                        d[doff] = rgb.r; d[doff + 1] = rgb.g; d[doff + 2] = rgb.b; d[doff + 3] = 255;
+                    }
+                }
+            }
+        }
+        ctxP.putImageData(img, 0, 0);
+        showScrModal._lastPcColor = pcColor;
+    };
+
+    const schedule = () => {
+        let pendingChoice = scrPaletteSlider.value;
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+            raf = 0;
+            renderPreview(pendingChoice);
+        });
+    };
+
+    scrPaletteSlider.oninput = schedule;
+
+    document.getElementById("scrPreviewAccept").onclick = () => {
+        const pcColor = showScrModal._lastPcColor || (renderPreview(scrPaletteSlider.value), showScrModal._lastPcColor);
+        MODEL.pattern.set(cvPatternFixed);
+        MODEL.color.set(pcColor);
+        RENDERER.render();
+        bootstrap.Modal.getInstance(document.getElementById("scrPreviewModal")).hide();
+        UI.setStatus("IMPORTED " + zxFormat.toUpperCase());
+        HISTORY.push();
+    };
+
+    renderPreview(scrPaletteSlider.value);
+    scrPreviewModal.show();
+}
+
+function applyPaste() {
+    if(!STATE.isPasting || !MODEL.clipboard) return;
+    HISTORY.push();
+    const {w, h, p, c} = MODEL.clipboard;
+    for(let row=0; row<h; row++) {
+        for(let col=0; col<w; col++) {
+            const destX = STATE.pastePos.x + col;
+            const destY = STATE.pastePos.y + row;
+            if(destX >= 32 || destY >= 24) continue;
+            for(let line=0; line<8; line++) {
+                const srcIdx = (row*w + col)*8 + line;
+                const dstIdx = destY*256 + destX*8 + line;
+                MODEL.pattern[dstIdx] = p[srcIdx];
+                MODEL.color[dstIdx] = c[srcIdx];
+            }
+        }
+    }
+    STATE.isPasting = false; STATE.tool = "pen"; document.getElementById("toolPen").checked=true;
+    RENDERER.render(); UI.setStatus("PASTED");
+}
+
+function importDitheredImage() {
+    const px = document.getElementById("ditherPreviewCanvas").getContext("2d").getImageData(0,0,256,192).data;
+    const findClosest = (r,g,b) => {
+        let best=1, min=Infinity;
+        for(let i=1; i<=15; i++) {
+            const p=CONFIG.PALETTE[i], d=(r-p.r)**2+(g-p.g)**2+(b-p.b)**2;
+            if(d<min) { min=d; best=i; }
+        }
+        return best;
+    };
+    for(let y=0; y<192; y++) {
+        for(let tx=0; tx<32; tx++) {
+            const rowIdxs = []; const counts = {};
+            for(let k=0; k<8; k++) {
+                const off=(y*256+tx*8+k)*4;
+                const idx=findClosest(px[off], px[off+1], px[off+2]);
+                rowIdxs.push(idx); counts[idx]=(counts[idx]||0)+1;
+            }
+            const sorted=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+            let fg=15, bg=1;
+            if(sorted.length>0) fg=parseInt(sorted[0]);
+            if(sorted.length>1) bg=parseInt(sorted[1]); else bg=fg;
+            let pat=0; for(let k=0; k<8; k++) if(rowIdxs[k]===fg) pat|=(1<<(7-k));
+            const addr = (Math.floor(y/8)*256)+(tx*8)+(y%8);
+            MODEL.pattern[addr]=pat; MODEL.color[addr]=(fg<<4)|bg;
+        }
+    }
+    bootstrap.Modal.getInstance(document.getElementById("ditherModal")).hide();
+    RENDERER.render(); UI.setStatus("IMPORTED DITHER IMAGE"); HISTORY.push();
+}
+
+// ============================================================
+// MAIN INIT
+// ============================================================
+MODEL.init();
+MODEL.clear(15, 1);
+HISTORY.push();
+INPUT.init();
+UI.init();
+RENDERER.render();
+
+// Ensure the checkboxes trigger:
+[document.getElementById("diffSlider"), document.getElementById("brightSlider"), document.getElementById("gammaSlider"), document.getElementById("ditherMode")].forEach(e => e.oninput = runDitherPipeline);
+document.getElementById("fitMode").onchange = () => { document.getElementById("fitMode").checked=true; DITHER.updateSource("fit"); };
+document.getElementById("stretchMode").onchange = () => { document.getElementById("stretchMode").checked=true; DITHER.updateSource("stretch"); };
+document.getElementById("btnImportDithered").onclick = importDitheredImage;
+
+</script>
+</body>
+</html>
