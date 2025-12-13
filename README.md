@@ -23,7 +23,7 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 - **Undo/Redo** - Full history management (Ctrl+Z / Ctrl+Y)
 - **Grid overlay** - Toggle 8×8 character grid for precise alignment (Hotkey: X)
 - **Zoom mode** - 2× magnification for detailed work (Hotkey: Z)
-- **Canvas scrolling** - Shift your artwork by 1 or 8 pixels in any direction
+- **Canvas scrolling** - Scroll in four directions
 
 ### File Support
 
