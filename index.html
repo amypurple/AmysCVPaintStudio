@@ -1116,6 +1116,7 @@ const UI = {
                 if(e.button===2) STATE.bgIndex = i; else STATE.fgIndex = i;
                 this.updateColors();
             };
+            div.oncontextmenu = (e) => e.preventDefault();
             pc.appendChild(div);
         });
         this.updateColors();
