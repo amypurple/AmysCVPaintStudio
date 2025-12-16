@@ -1123,7 +1123,17 @@ const UI = {
         
         // Tool Radios
         document.querySelectorAll("input[name='tool']").forEach(el => {
-            el.onchange = () => { if(el.checked) STATE.tool = el.id.replace("tool","").toLowerCase(); };
+            el.onchange = () => {
+                if(el.checked) {
+                    const toolName = el.id.replace("tool","");
+                    // Convert to lowercase but preserve camelCase for specific tools
+                    if (toolName === "RectGrid") {
+                        STATE.tool = "rectGrid";
+                    } else {
+                        STATE.tool = toolName.toLowerCase();
+                    }
+                }
+            };
         });
         
         // Buttons
