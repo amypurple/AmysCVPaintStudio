@@ -287,7 +287,7 @@
             <tr><td class="text-muted">Resolution:</td><td>32x24 Tiles (8x8 pixels)</td></tr>
             <tr><td class="text-muted">Color:</td><td>2 Colors per 8x1 line (15 color palette)</td></tr>
             <tr><td class="text-muted">Import:</td><td>SCR, MLT, PC, GRP, MC, IMG (Gigascreen)</td></tr>
-            <tr><td class="text-muted">Algorithms:</td><td>Error Diffusion Dithering</td></tr>
+            <tr><td class="text-muted">Algorithms:</td><td>Error Diffusion & Ordered Dithering</td></tr>
         </table>
 
         <h6 class="fw-bold border-bottom pb-1">Legacy History</h6>
@@ -349,14 +349,29 @@
                                 <div class="form-check form-check-inline mb-0"><input class="form-check-input" type="radio" name="aspectMode" id="stretchMode" value="stretch"><label class="form-check-label small" for="stretchMode">Stretch</label></div>
                             </div>
                             <div class="mb-2">
-                                <label class="text-muted text-uppercase small fw-bold mb-0">Algorithm</label>
+                                <label class="text-muted text-uppercase small fw-bold mb-0">Color Mode</label>
                                 <select id="ditherMode" class="form-select form-select-sm py-0" style="font-size:0.85rem">
-                                    <option value="row8x1">2 colors / 8×1 (Strict)</option>
-                                    <option value="block8x2">4 colors / 8×2 (Advanced)</option>
+                                    <option value="row8x1">2 colors / 8×1 line</option>
+                                    <option value="tile8x8">2 colors / 8×8 tile</option>
                                 </select>
                             </div>
-                            <label class="small mb-0">Diff: <span id="diffLabel">75</span>%</label><input type="range" class="form-range" id="diffSlider" min="0" max="200" value="75">
+                            <div class="mb-2">
+                                <label class="text-muted text-uppercase small fw-bold mb-0">Dithering Method</label>
+                                <select id="ditherMethod" class="form-select form-select-sm py-0" style="font-size:0.85rem">
+                                    <option value="error-diffusion">Error Diffusion (Floyd-Steinberg)</option>
+                                    <option value="ordered-2x2">Ordered (Bayer 2×2)</option>
+                                    <option value="ordered-4x4">Ordered (Bayer 4×4)</option>
+                                    <option value="ordered-8x8">Ordered (Bayer 8×8)</option>
+                                </select>
+                            </div>
+                            <div id="errorDiffusionControls">
+                                <label class="small mb-0">Diff: <span id="diffLabel">75</span>%</label><input type="range" class="form-range" id="diffSlider" min="0" max="200" value="75">
+                            </div>
+                            <div id="orderedDitherControls" style="display:none;">
+                                <label class="small mb-0">Threshold: <span id="thresholdLabel">0.5</span></label><input type="range" class="form-range" id="thresholdSlider" min="0" max="100" value="50">
+                            </div>
                             <label class="small mb-0">Bright: <span id="brightLabel">100</span>%</label><input type="range" class="form-range" id="brightSlider" min="0" max="200" value="100">
+                            <label class="small mb-0">Contrast: <span id="contrastLabel">100</span>%</label><input type="range" class="form-range" id="contrastSlider" min="0" max="200" value="100">
                             <label class="small mb-0">Gamma: <span id="gammaLabel">100</span>%</label><input type="range" class="form-range" id="gammaSlider" min="10" max="190" value="100">
                         </div>
                     </div>
@@ -1217,16 +1232,53 @@ function getActiveDitherPalette() {
 function ecart2(c1, c2) { return (c1.r-c2.r)**2 + (c1.g-c2.g)**2 + (c1.b-c2.b)**2; }
 function pourcentage(c1, c2, p) { const d12=ecart2(c1, c2); return d12===0 ? 0 : (d12 + ecart2(c1, p) - ecart2(c2, p)) / d12 / 2; }
 
+// Bayer matrices for ordered dithering
+const BAYER_MATRICES = {
+    bayer2x2: [
+        [0, 2],
+        [3, 1]
+    ],
+    bayer4x4: [
+        [0, 8, 2, 10],
+        [12, 4, 14, 6],
+        [3, 11, 1, 9],
+        [15, 7, 13, 5]
+    ],
+    bayer8x8: [
+        [0, 32, 8, 40, 2, 34, 10, 42],
+        [48, 16, 56, 24, 50, 18, 58, 26],
+        [12, 44, 4, 36, 14, 46, 6, 38],
+        [60, 28, 52, 20, 62, 30, 54, 22],
+        [3, 35, 11, 43, 1, 33, 9, 41],
+        [51, 19, 59, 27, 49, 17, 57, 25],
+        [15, 47, 7, 39, 13, 45, 5, 37],
+        [63, 31, 55, 23, 61, 29, 53, 21]
+    ]
+};
+
 function buildToned() {
     if(!ditherOriginalData) return null;
     const { width: w, height: h, data: src } = ditherOriginalData;
     const out = new Uint8ClampedArray(src.length);
     const gammaSlider = document.getElementById("gammaSlider");
     const brightSlider = document.getElementById("brightSlider");
-    
-    const gamma = parseInt(gammaSlider.value)/100.0, factor = (parseInt(brightSlider.value)-100)*255/100;
+    const contrastSlider = document.getElementById("contrastSlider");
+
+    const gamma = parseInt(gammaSlider.value)/100.0;
+    const brightFactor = (parseInt(brightSlider.value)-100)*255/100;
+    const contrast = parseInt(contrastSlider.value)/100.0;
+
     const table = new Uint8Array(256);
-    for(let i=0; i<256; i++) table[i] = Math.max(0, Math.min(255, Math.pow(i/255, 1/gamma)*255 + factor));
+    for(let i=0; i<256; i++) {
+        // Apply gamma correction
+        let val = Math.pow(i/255, 1/gamma)*255;
+        // Apply contrast (pivot around 128)
+        val = ((val - 128) * contrast) + 128;
+        // Apply brightness
+        val = val + brightFactor;
+        // Clamp
+        table[i] = Math.max(0, Math.min(255, val));
+    }
     for(let i=0; i<src.length; i+=4) { out[i]=table[src[i]]; out[i+1]=table[src[i+1]]; out[i+2]=table[src[i+2]]; out[i+3]=src[i+3]; }
     return { data: out, width: w, height: h };
 }
@@ -1267,21 +1319,252 @@ function ditherRow8x1(toned, w, h, palette, errorFactor) {
     return new ImageData(dst, w, h);
 }
 
+function ditherRow8x1Ordered(toned, w, h, palette, matrixName, threshold) {
+    const src = toned.data, dst = new Uint8ClampedArray(src.length);
+    const n = palette.length;
+    const matrix = BAYER_MATRICES[matrixName];
+    const matrixSize = matrix.length;
+    const maxValue = matrixSize * matrixSize;
+
+    const getPix = (x, y) => {
+        const off = (y * w + x) * 4;
+        return { r: src[off], g: src[off + 1], b: src[off + 2] };
+    };
+
+    for(let y = 0; y < h; y++) {
+        for(let bx = 0; bx < w / 8; bx++) {
+            // Find best 2-color pair for this 8x1 block
+            let bestScore = Infinity, c1 = 0, c2 = 1;
+            const pixels = [];
+            for(let k = 0; k < 8; k++) pixels.push(getPix(bx * 8 + k, y));
+
+            for(let i = 0; i < n - 1; i++) {
+                for(let j = i + 1; j < n; j++) {
+                    let sc = 0;
+                    const pA = palette[i], pB = palette[j];
+                    for(const p of pixels) sc += Math.min(ecart2(pA, p), ecart2(pB, p));
+                    if(sc < bestScore) { bestScore = sc; c1 = i; c2 = j; }
+                }
+            }
+
+            const pal1 = palette[c1], pal2 = palette[c2];
+
+            // Apply ordered dithering within the block
+            for(let k = 0; k < 8; k++) {
+                const x = bx * 8 + k;
+                const p = getPix(x, y);
+
+                // Get threshold from Bayer matrix
+                const bayerValue = matrix[y % matrixSize][x % matrixSize];
+                const normalizedThreshold = (bayerValue / maxValue) * threshold;
+
+                // Calculate which color to choose based on distance and threshold
+                const dist1 = ecart2(pal1, p);
+                const dist2 = ecart2(pal2, p);
+                const ratio = dist1 / (dist1 + dist2 + 0.0001);
+
+                const chosen = (ratio > 0.5 + normalizedThreshold) ? pal2 : pal1;
+
+                const idx = (y * w + x) * 4;
+                dst[idx] = chosen.r;
+                dst[idx + 1] = chosen.g;
+                dst[idx + 2] = chosen.b;
+                dst[idx + 3] = 255;
+            }
+        }
+    }
+    return new ImageData(dst, w, h);
+}
+
+// ZX Spectrum style: 2 colors per 8x8 tile - Error Diffusion
+function ditherTile8x8(toned, w, h, palette, errorFactor) {
+    const src = toned.data, dst = new Uint8ClampedArray(src.length);
+    const errR = new Float32Array(w*h), errG = new Float32Array(w*h), errB = new Float32Array(w*h);
+    const n = palette.length;
+    const kernel = [ {dx:1,dy:0,w:7/16}, {dx:-1,dy:1,w:3/16}, {dx:0,dy:1,w:5/16}, {dx:1,dy:1,w:1/16} ];
+
+    const getPix = (x, y) => {
+        const i = y * w + x, off = i * 4;
+        return { r: Math.max(0, Math.min(255, src[off] + errR[i])), g: Math.max(0, Math.min(255, src[off+1] + errG[i])), b: Math.max(0, Math.min(255, src[off+2] + errB[i])) };
+    };
+
+    // Process in 8x8 tiles (32 tiles wide, 24 tiles tall)
+    for(let ty = 0; ty < 24; ty++) {
+        for(let tx = 0; tx < 32; tx++) {
+            // Find best 2-color pair for this 8x8 tile
+            let bestScore = Infinity, c1 = 0, c2 = 1;
+            const pixels = [];
+
+            for(let py = 0; py < 8; py++) {
+                for(let px = 0; px < 8; px++) {
+                    pixels.push(getPix(tx * 8 + px, ty * 8 + py));
+                }
+            }
+
+            for(let i = 0; i < n - 1; i++) {
+                for(let j = i + 1; j < n; j++) {
+                    let sc = 0;
+                    const pA = palette[i], pB = palette[j];
+                    for(const p of pixels) sc += Math.min(ecart2(pA, p), ecart2(pB, p));
+                    if(sc < bestScore) { bestScore = sc; c1 = i; c2 = j; }
+                }
+            }
+
+            const pal1 = palette[c1], pal2 = palette[c2];
+
+            // Apply error diffusion within the tile
+            for(let py = 0; py < 8; py++) {
+                for(let px = 0; px < 8; px++) {
+                    const x = tx * 8 + px;
+                    const y = ty * 8 + py;
+                    const p = getPix(x, y);
+
+                    const chosen = (pourcentage(pal1, pal2, p) > 0.5) ? pal2 : pal1;
+
+                    const idx = (y * w + x) * 4;
+                    dst[idx] = chosen.r;
+                    dst[idx + 1] = chosen.g;
+                    dst[idx + 2] = chosen.b;
+                    dst[idx + 3] = 255;
+
+                    const er = (p.r - chosen.r) * errorFactor;
+                    const eg = (p.g - chosen.g) * errorFactor;
+                    const eb = (p.b - chosen.b) * errorFactor;
+
+                    for(const kv of kernel) {
+                        const nx = x + kv.dx, ny = y + kv.dy;
+                        // Only propagate error within the current tile
+                        if(nx >= tx * 8 && nx < (tx + 1) * 8 && ny >= ty * 8 && ny < (ty + 1) * 8) {
+                            const ni = ny * w + nx;
+                            errR[ni] += er * kv.w;
+                            errG[ni] += eg * kv.w;
+                            errB[ni] += eb * kv.w;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return new ImageData(dst, w, h);
+}
+
+// ZX Spectrum style: 2 colors per 8x8 tile - Ordered Dithering
+function ditherTile8x8Ordered(toned, w, h, palette, matrixName, threshold) {
+    const src = toned.data, dst = new Uint8ClampedArray(src.length);
+    const n = palette.length;
+    const matrix = BAYER_MATRICES[matrixName];
+    const matrixSize = matrix.length;
+    const maxValue = matrixSize * matrixSize;
+
+    const getPix = (x, y) => {
+        const off = (y * w + x) * 4;
+        return { r: src[off], g: src[off + 1], b: src[off + 2] };
+    };
+
+    // Process in 8x8 tiles (32 tiles wide, 24 tiles tall)
+    for(let ty = 0; ty < 24; ty++) {
+        for(let tx = 0; tx < 32; tx++) {
+            // Find best 2-color pair for this 8x8 tile
+            let bestScore = Infinity, c1 = 0, c2 = 1;
+            const pixels = [];
+
+            for(let py = 0; py < 8; py++) {
+                for(let px = 0; px < 8; px++) {
+                    pixels.push(getPix(tx * 8 + px, ty * 8 + py));
+                }
+            }
+
+            for(let i = 0; i < n - 1; i++) {
+                for(let j = i + 1; j < n; j++) {
+                    let sc = 0;
+                    const pA = palette[i], pB = palette[j];
+                    for(const p of pixels) sc += Math.min(ecart2(pA, p), ecart2(pB, p));
+                    if(sc < bestScore) { bestScore = sc; c1 = i; c2 = j; }
+                }
+            }
+
+            const pal1 = palette[c1], pal2 = palette[c2];
+
+            // Apply ordered dithering within the tile
+            for(let py = 0; py < 8; py++) {
+                for(let px = 0; px < 8; px++) {
+                    const x = tx * 8 + px;
+                    const y = ty * 8 + py;
+                    const p = getPix(x, y);
+
+                    // Get threshold from Bayer matrix
+                    const bayerValue = matrix[py % matrixSize][px % matrixSize];
+                    const normalizedThreshold = (bayerValue / maxValue) * threshold;
+
+                    // Calculate which color to choose based on distance and threshold
+                    const dist1 = ecart2(pal1, p);
+                    const dist2 = ecart2(pal2, p);
+                    const ratio = dist1 / (dist1 + dist2 + 0.0001);
+
+                    const chosen = (ratio > 0.5 + normalizedThreshold) ? pal2 : pal1;
+
+                    const idx = (y * w + x) * 4;
+                    dst[idx] = chosen.r;
+                    dst[idx + 1] = chosen.g;
+                    dst[idx + 2] = chosen.b;
+                    dst[idx + 3] = 255;
+                }
+            }
+        }
+    }
+    return new ImageData(dst, w, h);
+}
+
 function runDitherPipeline() {
     if(!ditherOriginalData) return;
     const diffSlider = document.getElementById("diffSlider");
     const brightSlider = document.getElementById("brightSlider");
+    const contrastSlider = document.getElementById("contrastSlider");
     const gammaSlider = document.getElementById("gammaSlider");
-    
+    const thresholdSlider = document.getElementById("thresholdSlider");
+    const ditherMethod = document.getElementById("ditherMethod").value;
+    const ditherMode = document.getElementById("ditherMode").value;
+
     document.getElementById("diffLabel").textContent = diffSlider.value;
     document.getElementById("brightLabel").textContent = brightSlider.value;
+    document.getElementById("contrastLabel").textContent = contrastSlider.value;
     document.getElementById("gammaLabel").textContent = gammaSlider.value;
-    
+    document.getElementById("thresholdLabel").textContent = (parseInt(thresholdSlider.value) / 100).toFixed(2);
+
     const toned = buildToned();
     const activePal = getActiveDitherPalette();
-    const err = parseInt(diffSlider.value)/100;
-    
-    const res = ditherRow8x1(toned, 256, 192, activePal, err);
+
+    let res;
+
+    // Choose algorithm based on color mode and dithering method
+    if (ditherMode === "tile8x8") {
+        // ZX Spectrum style: 2 colors per 8x8 tile
+        if (ditherMethod === "error-diffusion") {
+            const err = parseInt(diffSlider.value) / 100;
+            res = ditherTile8x8(toned, 256, 192, activePal, err);
+        } else {
+            let matrixName;
+            if (ditherMethod === "ordered-2x2") matrixName = "bayer2x2";
+            else if (ditherMethod === "ordered-4x4") matrixName = "bayer4x4";
+            else if (ditherMethod === "ordered-8x8") matrixName = "bayer8x8";
+            const threshold = parseInt(thresholdSlider.value) / 100;
+            res = ditherTile8x8Ordered(toned, 256, 192, activePal, matrixName, threshold);
+        }
+    } else {
+        // ColecoVision style: 2 colors per 8x1 line
+        if (ditherMethod === "error-diffusion") {
+            const err = parseInt(diffSlider.value) / 100;
+            res = ditherRow8x1(toned, 256, 192, activePal, err);
+        } else {
+            let matrixName;
+            if (ditherMethod === "ordered-2x2") matrixName = "bayer2x2";
+            else if (ditherMethod === "ordered-4x4") matrixName = "bayer4x4";
+            else if (ditherMethod === "ordered-8x8") matrixName = "bayer8x8";
+            const threshold = parseInt(thresholdSlider.value) / 100;
+            res = ditherRow8x1Ordered(toned, 256, 192, activePal, matrixName, threshold);
+        }
+    }
+
     document.getElementById("ditherPreviewCanvas").getContext("2d").putImageData(res, 0, 0);
 }
 
@@ -1533,7 +1816,16 @@ UI.init();
 RENDERER.render();
 
 // Ensure the checkboxes trigger:
-[document.getElementById("diffSlider"), document.getElementById("brightSlider"), document.getElementById("gammaSlider"), document.getElementById("ditherMode")].forEach(e => e.oninput = runDitherPipeline);
+// Toggle between error diffusion and ordered dithering controls
+document.getElementById("ditherMethod").onchange = function() {
+    const method = this.value;
+    const isErrorDiffusion = (method === "error-diffusion");
+    document.getElementById("errorDiffusionControls").style.display = isErrorDiffusion ? "block" : "none";
+    document.getElementById("orderedDitherControls").style.display = isErrorDiffusion ? "none" : "block";
+    runDitherPipeline();
+};
+
+[document.getElementById("diffSlider"), document.getElementById("brightSlider"), document.getElementById("contrastSlider"), document.getElementById("gammaSlider"), document.getElementById("thresholdSlider"), document.getElementById("ditherMode"), document.getElementById("ditherMethod")].forEach(e => e.oninput = runDitherPipeline);
 document.getElementById("fitMode").onchange = () => { document.getElementById("fitMode").checked=true; DITHER.updateSource("fit"); };
 document.getElementById("stretchMode").onchange = () => { document.getElementById("stretchMode").checked=true; DITHER.updateSource("stretch"); };
 document.getElementById("btnImportDithered").onclick = importDitheredImage;
@@ -1542,4 +1834,3 @@ document.getElementById("btnImportDithered").onclick = importDitheredImage;
 </body>
 
 </html>
-
