@@ -254,7 +254,7 @@
                         </button>
                         
                         <div class="alert alert-secondary py-1 px-2 mt-auto mb-0" style="font-size:0.7rem">
-                            <strong>Keys:</strong> S=Select, C=Copy, V=Paste, X=Cut. Hold <code>Alt</code> for Picker.
+                            <strong>Keys:</strong> S=Select, Ctrl+C=Copy, Ctrl+V=Paste, Ctrl+X=Cut. Hold <code>Alt</code> for Picker. G=Grid, Z=Zoom.
                         </div>
                     </div>
                 </div>
@@ -467,6 +467,7 @@ const STATE = {
     bgIndex: 1,
     tool: "pen", 
     gridEnabled: false,
+    didModify: false,
     
     // Zoom State
     zoom: {
@@ -817,7 +818,7 @@ const IO = {
         if (data.length % 10240 !== 0) throw new Error("Invalid PP file size");
         const nbCells = data.length / 10240;
         const pattern = new Uint8Array(6144), color = new Uint8Array(6144);
-        pattern.fill(0); color.fill((this.fg << 4) | this.bg);
+        pattern.fill(0); color.fill((STATE.fgIndex << 4) | STATE.bgIndex);
         const importPPCell0 = (pb, cb, pattern, color) => { for(let y2=0; y2<20; y2++) { let c=y2*256, d=y2*256+16; for(let k=0; k<240; k++) { color[c]=cb[d]; pattern[c]=pb[d]; c++; d++; } } };
         const importPPCell1 = (pb, cb, pattern, color) => { for(let y2=0; y2<20; y2++) { let c=y2*256+240, d=y2*256+16; for(let k=0; k<16; k++) { color[c]=cb[d]; pattern[c]=pb[d]; c++; d++; } } };
         const importPPCell2 = (pb, cb, pattern, color) => { for(let y2=0; y2<4; y2++) { let c=(20+y2)*256, d=y2*256+16; for(let k=0; k<240; k++) { color[c]=cb[d]; pattern[c]=pb[d]; c++; d++; } } };
@@ -947,11 +948,13 @@ const INPUT = {
             STATE.mouse.startX = p.x; STATE.mouse.startY = p.y;
             STATE.mouse.lastX = p.x; STATE.mouse.lastY = p.y;
             STATE.drawingButton = (e.button === 2) ? 2 : 1;
+            STATE.didModify = false;
             
             // Paste Mode
             if(STATE.isPasting) {
                 if(e.button === 0) { 
                     applyPaste(); // Apply
+                    STATE.didModify = true;
                 } else {
                     STATE.isPasting = false; STATE.tool = "pen"; UI.setStatus("PASTE CANCELLED");
                 }
@@ -973,6 +976,7 @@ const INPUT = {
             // Drawing Start
             STATE.isDrawing = true;
             MODEL.tempPattern.set(MODEL.pattern); MODEL.tempColor.set(MODEL.color); // Snapshot
+            STATE.didModify = true;
             
             if (STATE.tool === "pen") TOOLS.pen(p.x, p.y, STATE.drawingButton);
             else if (STATE.tool === "eraser") TOOLS.eraser(p.x, p.y, STATE.drawingButton);
@@ -1026,7 +1030,7 @@ const INPUT = {
 
         // Mouse Up
         window.addEventListener("mouseup", () => {
-            if(STATE.isDrawing) { STATE.isDrawing = false; HISTORY.push(); }
+            if(STATE.isDrawing) { STATE.isDrawing = false; if (STATE.didModify) HISTORY.push(); }
         });
         
         c.addEventListener("contextmenu", e => e.preventDefault());
@@ -1046,7 +1050,7 @@ const INPUT = {
             if(map[k]) document.getElementById(map[k]).click();
             
             if(k==='z' && !ctrl) document.getElementById("btnZoom").click();
-            if(k==='x' && !ctrl) document.getElementById("btnGrid").click();
+            if(k==='g' && !ctrl) document.getElementById("btnGrid").click();
             if(e.key === "Alt") c.classList.add("cursor-pipette");
         });
         
@@ -1189,16 +1193,22 @@ const UI = {
         window.ondragover = e => e.preventDefault();
         window.ondrop = e => { e.preventDefault(); dc=0; ol.style.display="none"; if(e.dataTransfer.files.length) IO.handleFile(e.dataTransfer.files[0]); };
     },
+
+    applyPaletteHighlights: function() {
+        const swatches = [...document.querySelectorAll("#paletteContainer .palette-swatch")];
+        swatches.forEach((el, i) => {
+            const colorIndex = i + 1; // because we skipped palette[0]
+            el.classList.remove("selected-fg", "selected-bg");
+            if (colorIndex === STATE.fgIndex) el.classList.add("selected-fg");
+            if (colorIndex === STATE.bgIndex) el.classList.add("selected-bg");
+        });
+    },
     
     updateColors: function() {
         const f = CONFIG.PALETTE[STATE.fgIndex], b = CONFIG.PALETTE[STATE.bgIndex];
         document.getElementById("fgBox").style.backgroundColor = `rgb(${f.r},${f.g},${f.b})`;
         document.getElementById("bgBox").style.backgroundColor = `rgb(${b.r},${b.g},${b.b})`;
-        document.querySelectorAll(".palette-swatch").forEach(el => {
-            el.className = "palette-swatch";
-            // Note: simplistic index matching based on child order or we could store data-id
-        });
-        // (Visual selection highlight logic omitted for brevity, but functional)
+        this.applyPaletteHighlights();
     },
     
     updateUndo: function() {
@@ -1845,3 +1855,4 @@ document.getElementById("btnImportDithered").onclick = importDitheredImage;
 </body>
 
 </html>
+
