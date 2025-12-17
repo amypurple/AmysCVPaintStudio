@@ -905,6 +905,9 @@ const DITHER = {
     sourceImg: null,
     
     start: function(img) {
+        if(!img || !img.width || !img.height) {
+            throw new Error("Invalid image object for dithering.");
+        }
         this.sourceImg = img;
         document.getElementById("fitMode").checked = true;
         this.updateSource("fit");
@@ -954,7 +957,6 @@ const INPUT = {
             if(STATE.isPasting) {
                 if(e.button === 0) { 
                     applyPaste(); // Apply
-                    STATE.didModify = true;
                 } else {
                     STATE.isPasting = false; STATE.tool = "pen"; UI.setStatus("PASTE CANCELLED");
                 }
@@ -1855,4 +1857,5 @@ document.getElementById("btnImportDithered").onclick = importDitheredImage;
 </body>
 
 </html>
+
 
