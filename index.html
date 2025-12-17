@@ -554,7 +554,7 @@ const RENDERER = {
                     
                     for (let b = 0; b < 8; b++) {
                         const idx = (pByte & DEUX[b]) ? fc : bc;
-                        const rgb = (idx === 0) ? palette[1] : palette[idx];
+                        const rgb = (idx === 0) ? palette[0] : palette[idx];
                         const off = ((yT*8+row)*256 + (xT*8+b)) * 4;
                         d[off] = rgb.r; d[off+1] = rgb.g; d[off+2] = rgb.b; d[off+3] = 255;
                     }
@@ -590,7 +590,7 @@ const RENDERER = {
                         const fc = (colVal >> 4) & 0xF, bc = colVal & 0xF;
                         for (let b = 0; b < 8; b++) {
                             const idx = (patVal & DEUX[b]) ? fc : bc;
-                            const rgb = (idx === 0) ? palette[1] : palette[idx];
+                            const rgb = (idx === 0) ? palette[0] : palette[idx];
                             const px = tx*8+b, py = ty*8+line;
                             const off = (py*256+px)*4;
                             d[off] = rgb.r; d[off+1] = rgb.g; d[off+2] = rgb.b; 
@@ -1145,7 +1145,7 @@ const UI = {
         // Buttons
         document.getElementById("btnUndo").onclick = () => HISTORY.undo();
         document.getElementById("btnRedo").onclick = () => HISTORY.redo();
-        document.getElementById("btnClear").onclick = () => { if(confirm("Clear?")) { MODEL.clear(STATE.fgIndex, STATE.bgIndex); RENDERER.render(); HISTORY.push(); }};
+        document.getElementById("btnClear").onclick = () => { if(confirm("Clear?")) { MODEL.clear(STATE.fgIndex, STATE.bgIndex); STATE.selection = null; STATE.isPasting = false; MODEL.clipboard = null; RENDERER.render(); HISTORY.push(); }};
         document.getElementById("btnGrid").onclick = () => { STATE.gridEnabled = !STATE.gridEnabled; RENDERER.render(); };
         document.getElementById("btnZoom").onclick = () => { 
             STATE.zoom.enabled = !STATE.zoom.enabled; 
@@ -1740,7 +1740,7 @@ function showScrModal(data, formatName) {
                     const pyBase = (cy * 8 + r) * 256 + (cx * 8);
                     for (let b = 0; b < 8; b++) {
                         const idx = (pat & DEUX[b]) ? fc : bc;
-                        const rgb = (idx === 0) ? CONFIG.PALETTE[1] : CONFIG.PALETTE[idx];
+                        const rgb = (idx === 0) ? CONFIG.PALETTE[0] : CONFIG.PALETTE[idx];
                         const doff = (pyBase + b) * 4;
                         d[doff] = rgb.r; d[doff + 1] = rgb.g; d[doff + 2] = rgb.b; d[doff + 3] = 255;
                     }
@@ -1857,5 +1857,6 @@ document.getElementById("btnImportDithered").onclick = importDitheredImage;
 </body>
 
 </html>
+
 
 
