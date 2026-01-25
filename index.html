@@ -54,11 +54,11 @@
 
     .canvas-wrapper {
         position: relative; background: #000; image-rendering: pixelated; 
-        overflow: hidden; width: 512px; height: 384px; margin: 0 auto; 
-        border: 8px solid #222; border-radius: 4px;
+        overflow: hidden; width: 520px; height: 392px; margin: 0 auto; 
+        border: 4px solid #222; border-radius: 4px;
         box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.3);
     }
-    .canvas-wrapper canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .canvas-wrapper canvas { position: absolute; inset: 0; width: 512px; height: 384px; }
     
     .cursor-pen { cursor: crosshair; }
     .cursor-eraser { cursor: cell; } 
@@ -153,6 +153,8 @@
                         <li><button class="dropdown-item" id="menuSavePat">Save .pattern</button></li>
                         <li><button class="dropdown-item" id="menuSaveCol">Save .color</button></li>
                         <li><button class="dropdown-item" id="menuSaveGrp">Save .grp</button></li>
+                        <li><button class="dropdown-item" id="menuSaveSC2">Save .sc2 (MSX)</button></li>
+                        <li><button class="dropdown-item" id="menuSaveSC2Sprites" style="display:none;">Save .sc2 + Sprites</button></li>
                         <li><button class="dropdown-item" id="menuSavePP10k">Save .pp (10k)</button></li>
                         <li><button class="dropdown-item" id="menuSavePP40k">Save .pp (40k)</button></li>
                         <li><hr class="dropdown-divider"></li>
@@ -246,6 +248,9 @@
                             </button>
                             <button class="btn btn-outline-secondary py-1" id="btnZoom" title="Toggle Zoom (Z)">
                                 <span class="material-symbols-outlined" id="btnZoomIcon" style="font-size:18px">zoom_in</span> Zoom
+                            </button>
+                            <button class="btn btn-outline-secondary py-1" id="btnSprites" title="Toggle Sprites (S)" style="display:none;">
+                                <span class="material-symbols-outlined" style="font-size:18px">emoji_nature</span> Sprites
                             </button>
                         </div>
 
@@ -425,6 +430,15 @@ const MODEL = {
     tempColor: new Uint8Array(CONFIG.COLOR_SIZE),
     name: new Uint8Array(CONFIG.NAME_SIZE),
 
+    // Sprite layer data (for SC2/GRP with sprites)
+    sprites: {
+        attributes: new Uint8Array(128),   // 32 sprites × 4 bytes (Y, X, Pattern, Color)
+        patterns: new Uint8Array(2048),    // Sprite pattern data (256 8×8 or 64 16×16)
+        hasPatterns: false,                // True if sprite patterns were loaded
+        enabled: false,                    // Display toggle
+        count: 0                           // Number of visible sprites
+    },
+
     // Initialize the Name Table for Linear Mode 2
     init: function() {
         // We iterate through all 768 positions
@@ -561,7 +575,84 @@ const RENDERER = {
                 }
             }
         }
-        
+
+        // 1b. Sprite Layer (rendered on top of bitmap)
+        if (MODEL.sprites.enabled && MODEL.sprites.count > 0) {
+            const sprAttr = MODEL.sprites.attributes;
+            const sprPat = MODEL.sprites.patterns;
+            const sprSize = MODEL.sprites.size16x16 ? 16 : 8;
+
+            // Render sprites from highest index to lowest (lower index = higher priority)
+            for (let i = MODEL.sprites.count - 1; i >= 0; i--) {
+                const offset = i * 4;
+                const sprY = sprAttr[offset];
+                const sprX = sprAttr[offset + 1];
+                const sprPattern = sprAttr[offset + 2];
+                const sprColorByte = sprAttr[offset + 3];
+
+                // Skip terminated sprites (Y >= 208)
+                if (sprY >= 208 && sprY <= 210) break;
+
+                // Parse color and Early Clock bit
+                const sprColor = sprColorByte & 0x0F;
+                const earlyClock = (sprColorByte & 0x80) !== 0;
+
+                // Skip transparent sprites (color 0)
+                if (sprColor === 0) continue;
+
+                // Calculate screen X (Early Clock shifts left 32 pixels)
+                const screenX = sprX - (earlyClock ? 32 : 0);
+
+                // Get sprite color RGB
+                const sprRgb = palette[sprColor];
+
+                // Pattern offset depends on sprite size
+                // For 8x8: pattern number * 8 bytes
+                // For 16x16: pattern number * 32 bytes (uses 4 consecutive 8x8 patterns)
+                const patternBase = sprSize === 16
+                    ? (sprPattern & 0xFC) * 8  // Mask lower 2 bits for 16x16
+                    : sprPattern * 8;
+
+                // Render sprite pixels
+                for (let py = 0; py < sprSize; py++) {
+                    const screenY = sprY + py + 1;
+                    if (screenY < 0 || screenY >= 192) continue;
+
+                    for (let px = 0; px < sprSize; px++) {
+                        const pixelX = screenX + px;
+                        if (pixelX < 0 || pixelX >= 256) continue;
+
+                        // Calculate byte and bit within sprite pattern
+                        // For 16x16: organized as 4 quadrants (top-left, bottom-left, top-right, bottom-right)
+                        let byteOffset, bitPos;
+                        if (sprSize === 16) {
+                            // 16x16 layout: bytes 0-7 = top-left, 8-15 = bottom-left,
+                            //               16-23 = top-right, 24-31 = bottom-right
+                            const quadX = px >= 8 ? 1 : 0;
+                            const quadY = py >= 8 ? 1 : 0;
+                            const localX = px % 8;
+                            const localY = py % 8;
+                            byteOffset = patternBase + (quadY * 8) + (quadX * 16) + localY;
+                            bitPos = 7 - localX;
+                        } else {
+                            // 8x8: straightforward
+                            byteOffset = patternBase + py;
+                            bitPos = 7 - px;
+                        }
+
+                        // Check if pixel is set in sprite pattern
+                        if (byteOffset < sprPat.length && (sprPat[byteOffset] >> bitPos) & 1) {
+                            const off = (screenY * 256 + pixelX) * 4;
+                            d[off] = sprRgb.r;
+                            d[off + 1] = sprRgb.g;
+                            d[off + 2] = sprRgb.b;
+                            // Alpha already set to 255 from main layer
+                        }
+                    }
+                }
+            }
+        }
+
         // 2. Selection Overlay
         if (STATE.selection) {
             const {x, y, w, h} = STATE.selection;
@@ -777,6 +868,21 @@ const IO = {
                     MODEL.pattern.set(res.pattern); MODEL.color.set(res.color);
                     UI.setStatus("LOADED GRP"); HISTORY.push();
                 }
+                // MSX SC2 format
+                else if(name.endsWith(".sc2")) {
+                    const res = this.convertSC2(data);
+                    MODEL.pattern.set(res.pattern); MODEL.color.set(res.color);
+                    // Show/hide sprite button based on loaded sprites
+                    const sprBtn = document.getElementById("btnSprites");
+                    if (MODEL.sprites.count > 0) {
+                        sprBtn.style.display = "";
+                        sprBtn.classList.toggle("active", MODEL.sprites.enabled);
+                    } else {
+                        sprBtn.style.display = "none";
+                    }
+                    const spriteInfo = MODEL.sprites.count > 0 ? ` (${MODEL.sprites.count} sprites)` : "";
+                    UI.setStatus("LOADED MSX SC2" + spriteInfo); HISTORY.push();
+                }
                 // Spectrum Imports
                 else if(name.match(/\.(scr|mlt|mc)$/)) {
                     IO.spectrum.showModal(data, name.split('.').pop());
@@ -812,6 +918,190 @@ const IO = {
         const pattern = grpData.slice(7, 7+6144);
         const color = grpData.slice(8199, 8199+6144);
         return { pattern, color };
+    },
+
+    // MSX SC2 format: 7-byte BLOAD header
+    // Reference: http://www.msx.org/wiki/MSX-BASIC_file_formats
+    //
+    // File sizes:
+    //   14,343 bytes (0x3807): Standard - no sprite patterns
+    //   16,391 bytes (0x4007): Extended - includes sprite patterns
+    //
+    // VRAM layout after 7-byte header:
+    //   0x0000-0x17FF: Pattern Generator (6144 bytes)
+    //   0x1800-0x1AFF: Name Table / SIT (768 bytes)
+    //   0x1B00-0x1B7F: Sprite Attributes (128 bytes)
+    //   0x1B80-0x1FFF: Padding (1152 bytes)
+    //   0x2000-0x37FF: Color Table (6144 bytes)
+    //   0x3800-0x3FFF: Sprite Patterns (2048 bytes, optional)
+    //
+    convertSC2: function(data) {
+        if (data.length < 0x2007 + 6144) throw new Error("Invalid SC2 file size");
+
+        // Extract all sections
+        const pattern = data.slice(0x0007, 0x0007 + 6144);
+        const nameTable = data.slice(0x1807, 0x1807 + 768);
+        const spriteAttr = data.slice(0x1B07, 0x1B07 + 128);
+        const color = data.slice(0x2007, 0x2007 + 6144);
+
+        // Check for sprite patterns (extended file)
+        let spritePatterns = null;
+        if (data.length >= 0x4007) {
+            spritePatterns = data.slice(0x3807, 0x3807 + 2048);
+        }
+
+        // Check if name table is standard (sequential 0-255 × 3)
+        let isStandard = true;
+        for (let third = 0; third < 3 && isStandard; third++) {
+            for (let i = 0; i < 256; i++) {
+                if (nameTable[third * 256 + i] !== i) {
+                    isStandard = false;
+                    break;
+                }
+            }
+        }
+
+        let finalPattern = pattern;
+        let finalColor = color;
+
+        // If custom name table, offer to flatten
+        if (!isStandard) {
+            const flatten = confirm(
+                "This SC2 uses a custom name table (tile mapping).\n\n" +
+                "Flatten to bitmap mode for editing?\n\n" +
+                "• Yes = Convert to bitmap (recommended for editing)\n" +
+                "• Cancel = Abort loading"
+            );
+
+            if (!flatten) {
+                throw new Error("Load cancelled by user");
+            }
+
+            // Flatten: remap pattern/color based on name table
+            const newPattern = new Uint8Array(6144);
+            const newColor = new Uint8Array(6144);
+
+            for (let third = 0; third < 3; third++) {
+                for (let tile = 0; tile < 256; tile++) {
+                    const destIndex = third * 2048 + tile * 8;
+                    const srcTile = nameTable[third * 256 + tile];
+                    const srcIndex = third * 2048 + srcTile * 8;
+
+                    for (let row = 0; row < 8; row++) {
+                        newPattern[destIndex + row] = pattern[srcIndex + row];
+                        newColor[destIndex + row] = color[srcIndex + row];
+                    }
+                }
+            }
+
+            finalPattern = newPattern;
+            finalColor = newColor;
+        }
+
+        // Load sprite data into MODEL
+        MODEL.sprites.attributes.set(spriteAttr);
+        if (spritePatterns) {
+            MODEL.sprites.patterns.set(spritePatterns);
+            MODEL.sprites.hasPatterns = true;
+        } else {
+            MODEL.sprites.patterns.fill(0);
+            MODEL.sprites.hasPatterns = false;
+        }
+
+        // Count visible sprites (Y < 208 = visible)
+        let spriteCount = 0;
+        for (let i = 0; i < 32; i++) {
+            if (spriteAttr[i * 4] >= 208) break;
+            spriteCount++;
+        }
+        MODEL.sprites.count = spriteCount;
+        MODEL.sprites.enabled = spriteCount > 0;
+
+        return { pattern: new Uint8Array(finalPattern), color: new Uint8Array(finalColor) };
+    },
+
+    // Build MSX SC2 file (14343 bytes / 0x3807)
+    // This is a VRAM dump for Screen 2 (Graphics II / Bitmap mode)
+    //
+    // 7-byte BLOAD header format:
+    //   Byte 0:   0xFE    - BLOAD file identifier
+    //   Byte 1-2: 0x0000  - Load address (little-endian)
+    //   Byte 3-4: 0x3800  - End address (little-endian)
+    //   Byte 5-6: 0x0000  - Boot address (unused for pictures)
+    //
+    // VRAM layout after header:
+    //   0x0000-0x17FF: Pattern Generator Table (6144 bytes)
+    //   0x1800-0x1AFF: Screen Image Table (768 bytes = 3x256)
+    //   0x1B00-0x1FFF: Sprite Attribute Table (1280 bytes padding)
+    //   0x2000-0x37FF: Color Table (6144 bytes)
+    //
+    // Display in MSX BASIC:
+    //   10 SCREEN 2
+    //   20 BLOAD "IMAGE.SC2",S
+    //   30 GOTO 30
+    //
+    // Build MSX SC2 file
+    // includeSprites: false = standard 14,343 bytes, true = extended 16,391 bytes with sprite patterns
+    buildSC2: function(includeSprites = false) {
+        // Determine if we have valid sprites to include
+        const hasSprites = MODEL.sprites.count > 0 && MODEL.sprites.hasPatterns;
+        const saveSprites = includeSprites && hasSprites;
+
+        // File sizes: standard = 0x3807 (14343), extended = 0x4007 (16391)
+        const fileSize = saveSprites ? 0x4007 : 0x3807;
+        const endAddr = saveSprites ? 0x4000 : 0x3800;
+        const d = new Uint8Array(fileSize);
+
+        // 1. BLOAD header (7 bytes)
+        // FE = identifier, 0000 = load at VRAM 0, endAddr = end, 0000 = no boot
+        d[0] = 0xFE;
+        d[1] = 0x00; d[2] = 0x00;  // Load address: 0x0000
+        d[3] = endAddr & 0xFF;     // End address low byte
+        d[4] = (endAddr >> 8) & 0xFF;  // End address high byte
+        d[5] = 0x00; d[6] = 0x00;  // Boot address: 0x0000
+
+        // 2. Pattern Generator Table at VRAM 0x0000 (file offset 7)
+        d.set(MODEL.pattern, 7);
+
+        // 3. Screen Image Table at VRAM 0x1800 (file offset 0x1807)
+        // Three copies of characters 0-255 for the three screen thirds
+        let sitOffset = 0x1807;
+        for (let third = 0; third < 3; third++) {
+            for (let i = 0; i < 256; i++) {
+                d[sitOffset++] = i;
+            }
+        }
+
+        // 4. Sprite Attribute Table at VRAM 0x1B00 (file offset 0x1B07)
+        // TMS9918A: 32 sprites max, 4 bytes each (Y, X, Pattern, Color)
+        // Y >= 0xD0 (208) terminates sprite processing
+        if (saveSprites) {
+            // Copy actual sprite attributes (128 bytes = 32 sprites * 4 bytes)
+            d.set(MODEL.sprites.attributes.subarray(0, 128), 0x1B07);
+        } else {
+            // Fill with terminators (no sprites)
+            for (let i = 0; i < 32; i++) {
+                const off = 0x1B07 + i * 4;
+                d[off] = 0xD0;      // Y = 208 (sprite terminator)
+                d[off + 1] = 0x00;  // X position
+                d[off + 2] = 0x00;  // Pattern number
+                d[off + 3] = 0x00;  // Color
+            }
+        }
+        // Fill padding space (1280 - 128 = 1152 bytes) to reach color table
+        for (let i = 0x1B07 + 128; i < 0x2007; i++) {
+            d[i] = 0x00;
+        }
+
+        // 5. Color Table at VRAM 0x2000 (file offset 0x2007)
+        d.set(MODEL.color, 0x2007);
+
+        // 6. Sprite Pattern Table at VRAM 0x3800 (file offset 0x3807) - optional
+        if (saveSprites) {
+            d.set(MODEL.sprites.patterns.subarray(0, 2048), 0x3807);
+        }
+
+        return d;
     },
 
     convertPP: function(data) {
@@ -1153,6 +1443,11 @@ const UI = {
             RENDERER.render(); 
         };
         document.getElementById("btnAbout").onclick = () => new bootstrap.Modal(document.getElementById("aboutModal")).show();
+        document.getElementById("btnSprites").onclick = () => {
+            MODEL.sprites.enabled = !MODEL.sprites.enabled;
+            document.getElementById("btnSprites").classList.toggle("active", MODEL.sprites.enabled);
+            RENDERER.render();
+        };
 
         // Scrolls
         const sc = (dx,dy) => {
@@ -1182,6 +1477,7 @@ const UI = {
         document.getElementById("menuSavePat").onclick = () => IO.saveBlob(MODEL.pattern, "image.pattern");
         document.getElementById("menuSaveCol").onclick = () => IO.saveBlob(MODEL.color, "image.color");
         document.getElementById("menuSaveGrp").onclick = () => IO.saveBlob(IO.buildGrp(), "image.grp");
+        document.getElementById("menuSaveSC2").onclick = () => IO.saveBlob(IO.buildSC2(), "image.sc2");
         document.getElementById("menuSavePP10k").onclick = () => IO.saveBlob(IO.buildPP10k(), "image10k.pp");
         document.getElementById("menuSavePP40k").onclick = () => IO.saveBlob(IO.buildPP40k(), "image40k.pp");
         document.getElementById("menuSavePng").onclick = () => {
