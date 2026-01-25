@@ -31,7 +31,9 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 - Native `.pc` (pattern+color combined)
 - `.pattern` and `.color` (separate pattern/color data)
 - `.grp` files
+- `.sc2` - MSX Screen 2 format (with sprite support)
 - `.pp` files (10k and 40k variants)
+- ZX Spectrum formats (`.scr`, `.mlt`, `.mc`, `.img`, `.gig`)
 - Standard image formats (PNG, JPG, GIF, BMP, WebP) with dithering
 
 **Export Formats:**
@@ -39,8 +41,15 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 - `.pattern` - Pattern data only
 - `.color` - Color data only
 - `.grp` - Graphics format
+- `.sc2` - MSX Screen 2 (standard or with sprites)
 - `.pp` - Picture format (10k/40k)
 - `.png` - Modern image export
+
+### MSX SC2 Sprite Support
+- Load and display sprites from SC2 files
+- Toggle sprite layer visibility
+- Sprite Editor with attribute table and pattern grid viewer
+- Export sprites as companion files (`.sprattr`, `.sprpat`)
 
 ### Advanced Features
 - **Drag & drop** - Simply drop image files onto the canvas

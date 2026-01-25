@@ -159,6 +159,7 @@
                         <li><button class="dropdown-item" id="menuSavePP40k">Save .pp (40k)</button></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><button class="dropdown-item" id="menuSavePng">Export PNG</button></li>
+                        <li><button class="dropdown-item" id="menuExportSprites" style="display:none;">Export Sprites...</button></li>
                     </ul>
                 </li>
             </ul>
@@ -249,8 +250,11 @@
                             <button class="btn btn-outline-secondary py-1" id="btnZoom" title="Toggle Zoom (Z)">
                                 <span class="material-symbols-outlined" id="btnZoomIcon" style="font-size:18px">zoom_in</span> Zoom
                             </button>
-                            <button class="btn btn-outline-secondary py-1" id="btnSprites" title="Toggle Sprites (S)" style="display:none;">
+                            <button class="btn btn-outline-secondary py-1" id="btnSprites" title="Toggle Sprites" style="display:none;">
                                 <span class="material-symbols-outlined" style="font-size:18px">emoji_nature</span> Sprites
+                            </button>
+                            <button class="btn btn-outline-secondary py-1" id="btnSpriteEdit" title="Edit Sprites" style="display:none;">
+                                <span class="material-symbols-outlined" style="font-size:18px">edit</span>
                             </button>
                         </div>
 
@@ -307,6 +311,91 @@
         <div class="alert alert-light border small text-center mt-3 mb-0">
             <em>"Made with <span style="color:var(--amy-purple)">♥</span> for the Retro Community"</em>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="spriteEditorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2" style="background: var(--amy-purple); color: white;">
+        <h5 class="modal-title fw-bold">Sprite Editor</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-2">
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-2" role="tablist">
+          <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabSpriteAttr">Attributes (32)</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPatternGrid" onclick="UI.renderPatternGrid()">Pattern Grid (64)</a></li>
+        </ul>
+        <div class="tab-content">
+          <!-- Tab 1: Attributes -->
+          <div class="tab-pane fade show active" id="tabSpriteAttr">
+            <div class="row g-2">
+              <!-- Sprite Attribute Table -->
+              <div class="col-md-7">
+                <div class="card h-100">
+                  <div class="card-header py-1 small fw-bold">Sprite Attributes (32 max)</div>
+                  <div class="card-body p-0" style="max-height: 350px; overflow-y: auto;">
+                    <table class="table table-sm table-hover mb-0 small" style="font-family: monospace;">
+                      <thead class="sticky-top bg-light">
+                        <tr><th>#</th><th>Y</th><th>X</th><th>Pat</th><th>Color</th><th>EC</th><th>Status</th></tr>
+                      </thead>
+                      <tbody id="spriteAttrTable"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              <!-- Sprite Pattern Preview -->
+              <div class="col-md-5">
+                <div class="card h-100">
+                  <div class="card-header py-1 small fw-bold">Pattern Preview</div>
+                  <div class="card-body text-center p-2">
+                    <canvas id="spritePatternCanvas" width="128" height="128" style="border:1px solid #ccc; image-rendering: pixelated;"></canvas>
+                    <div class="mt-1 small text-muted">
+                      <span id="spritePatternInfo">Click a sprite row to preview</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Tab 2: Pattern Grid -->
+          <div class="tab-pane fade" id="tabPatternGrid">
+            <div class="card">
+              <div class="card-header py-1 small fw-bold d-flex justify-content-between align-items-center">
+                <span>All 64 Sprite Patterns (16x16 mode view)</span>
+                <div>
+                  <label class="small me-2">Preview Color:</label>
+                  <select id="patternGridColor" class="form-select form-select-sm d-inline-block" style="width:auto;" onchange="UI.renderPatternGrid()">
+                    <option value="15" selected>White</option>
+                    <option value="6">Dark Red</option>
+                    <option value="8">Medium Red</option>
+                    <option value="4">Dark Blue</option>
+                    <option value="5">Light Blue</option>
+                    <option value="12">Dark Green</option>
+                    <option value="2">Medium Green</option>
+                  </select>
+                </div>
+              </div>
+              <div class="card-body text-center p-2" style="overflow: auto;">
+                <canvas id="patternGridCanvas" width="544" height="544" style="border:1px solid #ccc; image-rendering: pixelated;"></canvas>
+                <div class="mt-1 small text-muted">
+                  8×8 grid showing patterns 0-63 (each 16×16 = 32 bytes). Click to select.
+                </div>
+                <div class="mt-1 small"><span id="patternGridInfo">Hover over a pattern for details</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Summary -->
+        <div class="alert alert-info py-1 px-2 mt-2 mb-0 small">
+          <strong>Summary:</strong> <span id="spriteSummary">No sprites loaded</span>
+        </div>
+      </div>
+      <div class="modal-footer py-1">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -590,8 +679,8 @@ const RENDERER = {
                 const sprPattern = sprAttr[offset + 2];
                 const sprColorByte = sprAttr[offset + 3];
 
-                // Skip terminated sprites (Y >= 208)
-                if (sprY >= 208 && sprY <= 210) break;
+                // Skip terminator sprite (only Y = 208 exactly)
+                if (sprY === 208) continue;
 
                 // Parse color and Early Clock bit
                 const sprColor = sprColorByte & 0x0F;
@@ -614,8 +703,11 @@ const RENDERER = {
                     : sprPattern * 8;
 
                 // Render sprite pixels
+                // TMS9918A: Y is treated as signed for wrap-around (Y=255 displays at top)
                 for (let py = 0; py < sprSize; py++) {
-                    const screenY = sprY + py + 1;
+                    // Handle Y wrap-around: values > 208 wrap to negative (e.g., 255 = -1)
+                    let screenY = sprY + py + 1;
+                    if (sprY > 208) screenY = (sprY - 256) + py + 1;  // Treat as signed
                     if (screenY < 0 || screenY >= 192) continue;
 
                     for (let px = 0; px < sprSize; px++) {
@@ -872,13 +964,23 @@ const IO = {
                 else if(name.endsWith(".sc2")) {
                     const res = this.convertSC2(data);
                     MODEL.pattern.set(res.pattern); MODEL.color.set(res.color);
-                    // Show/hide sprite button based on loaded sprites
+                    // Show/hide sprite UI based on loaded sprites
                     const sprBtn = document.getElementById("btnSprites");
+                    const sprEditBtn = document.getElementById("btnSpriteEdit");
+                    const sprMenuSave = document.getElementById("menuSaveSC2Sprites");
+                    const sprMenuExport = document.getElementById("menuExportSprites");
                     if (MODEL.sprites.count > 0) {
                         sprBtn.style.display = "";
+                        sprEditBtn.style.display = "";
                         sprBtn.classList.toggle("active", MODEL.sprites.enabled);
+                        // Export menu only visible when sprites are enabled
+                        sprMenuExport.style.display = MODEL.sprites.enabled ? "" : "none";
+                        sprMenuSave.style.display = MODEL.sprites.hasPatterns ? "" : "none";
                     } else {
                         sprBtn.style.display = "none";
+                        sprEditBtn.style.display = "none";
+                        sprMenuSave.style.display = "none";
+                        sprMenuExport.style.display = "none";
                     }
                     const spriteInfo = MODEL.sprites.count > 0 ? ` (${MODEL.sprites.count} sprites)` : "";
                     UI.setStatus("LOADED MSX SC2" + spriteInfo); HISTORY.push();
@@ -1008,10 +1110,13 @@ const IO = {
             MODEL.sprites.hasPatterns = false;
         }
 
-        // Count visible sprites (Y < 208 = visible)
+        // Count visible sprites - only Y = 208 (0xD0) exactly terminates
+        // TMS9918A: max 32 sprites, 4 bytes each (Y, X, Pattern, Color)
+        // Y values 209-255 are valid (off-screen or wrapping)
         let spriteCount = 0;
         for (let i = 0; i < 32; i++) {
-            if (spriteAttr[i * 4] >= 208) break;
+            const y = spriteAttr[i * 4];
+            if (y === 208) break;  // Only Y = 0xD0 terminates sprite list
             spriteCount++;
         }
         MODEL.sprites.count = spriteCount;
@@ -1446,7 +1551,12 @@ const UI = {
         document.getElementById("btnSprites").onclick = () => {
             MODEL.sprites.enabled = !MODEL.sprites.enabled;
             document.getElementById("btnSprites").classList.toggle("active", MODEL.sprites.enabled);
+            // Show/hide export menu based on enabled state
+            document.getElementById("menuExportSprites").style.display = MODEL.sprites.enabled ? "" : "none";
             RENDERER.render();
+        };
+        document.getElementById("btnSpriteEdit").onclick = () => {
+            UI.showSpriteEditor();
         };
 
         // Scrolls
@@ -1477,13 +1587,23 @@ const UI = {
         document.getElementById("menuSavePat").onclick = () => IO.saveBlob(MODEL.pattern, "image.pattern");
         document.getElementById("menuSaveCol").onclick = () => IO.saveBlob(MODEL.color, "image.color");
         document.getElementById("menuSaveGrp").onclick = () => IO.saveBlob(IO.buildGrp(), "image.grp");
-        document.getElementById("menuSaveSC2").onclick = () => IO.saveBlob(IO.buildSC2(), "image.sc2");
+        document.getElementById("menuSaveSC2").onclick = () => IO.saveBlob(IO.buildSC2(false), "image.sc2");
+        document.getElementById("menuSaveSC2Sprites").onclick = () => IO.saveBlob(IO.buildSC2(true), "image_sprites.sc2");
         document.getElementById("menuSavePP10k").onclick = () => IO.saveBlob(IO.buildPP10k(), "image10k.pp");
         document.getElementById("menuSavePP40k").onclick = () => IO.saveBlob(IO.buildPP40k(), "image40k.pp");
         document.getElementById("menuSavePng").onclick = () => {
              const a = document.createElement("a"); a.href = RENDERER.canvas.toDataURL("image/png"); a.download="image.png"; a.click();
         };
-        
+        document.getElementById("menuExportSprites").onclick = () => {
+            // Export sprite attribute table (128 bytes) and pattern table (2048 bytes)
+            if (MODEL.sprites.count > 0) {
+                IO.saveBlob(MODEL.sprites.attributes.slice(0, 128), "sprites.sprattr");
+                if (MODEL.sprites.hasPatterns) {
+                    setTimeout(() => IO.saveBlob(MODEL.sprites.patterns.slice(0, 2048), "sprites.sprpat"), 100);
+                }
+            }
+        };
+
         // Drag Drop
         const ol = document.getElementById("dropOverlay"); let dc=0;
         window.ondragenter = e => { e.preventDefault(); dc++; ol.style.display="flex"; };
@@ -1516,6 +1636,210 @@ const UI = {
     
     setStatus: function(msg) {
         document.getElementById("statusText").textContent = msg;
+    },
+
+    showSpriteEditor: function() {
+        const palette = CONFIG.PALETTE;
+        const sprAttr = MODEL.sprites.attributes;
+        const sprPat = MODEL.sprites.patterns;
+        const tbody = document.getElementById("spriteAttrTable");
+        tbody.innerHTML = "";
+
+        let visibleCount = 0;
+        let terminatorFound = false;
+
+        // Populate sprite attribute table
+        for (let i = 0; i < 32; i++) {
+            const offset = i * 4;
+            const y = sprAttr[offset];
+            const x = sprAttr[offset + 1];
+            const pat = sprAttr[offset + 2];
+            const colorByte = sprAttr[offset + 3];
+            const color = colorByte & 0x0F;
+            const ec = (colorByte & 0x80) !== 0;
+
+            let status = "";
+            let rowClass = "";
+            if (terminatorFound) {
+                status = "after term";
+                rowClass = "text-muted";
+            } else if (y === 208) {
+                status = "TERMINATOR";
+                rowClass = "table-warning";
+                terminatorFound = true;
+            } else {
+                visibleCount++;
+                status = y > 191 ? "off-screen" : "visible";
+                rowClass = y > 191 ? "text-muted" : "";
+            }
+
+            const colorName = ["Trans", "Black", "M.Green", "L.Green", "D.Blue", "L.Blue", "D.Red", "Cyan",
+                               "M.Red", "L.Red", "D.Yellow", "L.Yellow", "D.Green", "Magenta", "Gray", "White"][color];
+            const rgb = palette[color] || {r:0,g:0,b:0};
+
+            const tr = document.createElement("tr");
+            tr.className = rowClass;
+            tr.innerHTML = `
+                <td>${i}</td>
+                <td>${y}</td>
+                <td>${x}${ec ? " (EC-32=" + (x-32) + ")" : ""}</td>
+                <td>${pat}</td>
+                <td><span style="display:inline-block;width:12px;height:12px;background:rgb(${rgb.r},${rgb.g},${rgb.b});border:1px solid #333;vertical-align:middle;"></span> ${color} (${colorName})</td>
+                <td>${ec ? "Yes" : "No"}</td>
+                <td>${status}</td>
+            `;
+            tr.onclick = () => this.previewSpritePattern(pat, color);
+            tbody.appendChild(tr);
+        }
+
+        // Update summary
+        const hasPatterns = MODEL.sprites.hasPatterns;
+        document.getElementById("spriteSummary").innerHTML =
+            `<strong>${visibleCount}</strong> visible sprites, ` +
+            `Patterns: <strong>${hasPatterns ? "Yes (2048 bytes)" : "No"}</strong>, ` +
+            `Size mode: <strong>${MODEL.sprites.size16x16 ? "16x16" : "8x8"}</strong>`;
+
+        // Clear pattern preview
+        const canvas = document.getElementById("spritePatternCanvas");
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#222";
+        ctx.fillRect(0, 0, 128, 128);
+        document.getElementById("spritePatternInfo").textContent = "Click a sprite row to preview its pattern";
+
+        // Show modal
+        new bootstrap.Modal(document.getElementById("spriteEditorModal")).show();
+    },
+
+    previewSpritePattern: function(patNum, colorIndex) {
+        const canvas = document.getElementById("spritePatternCanvas");
+        const ctx = canvas.getContext("2d");
+        const sprPat = MODEL.sprites.patterns;
+        const palette = CONFIG.PALETTE;
+        const rgb = palette[colorIndex] || {r:255,g:255,b:255};
+        const size = MODEL.sprites.size16x16 ? 16 : 8;
+
+        // Clear canvas (128x128)
+        ctx.fillStyle = "#222";
+        ctx.fillRect(0, 0, 128, 128);
+
+        if (!MODEL.sprites.hasPatterns) {
+            document.getElementById("spritePatternInfo").textContent = "No pattern data available";
+            return;
+        }
+
+        // Calculate pattern base
+        const patternBase = size === 16 ? (patNum & 0xFC) * 8 : patNum * 8;
+        const scale = 128 / size;
+
+        ctx.fillStyle = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+
+        for (let py = 0; py < size; py++) {
+            for (let px = 0; px < size; px++) {
+                let byteOffset, bitPos;
+                if (size === 16) {
+                    const quadX = px >= 8 ? 1 : 0;
+                    const quadY = py >= 8 ? 1 : 0;
+                    const localX = px % 8;
+                    const localY = py % 8;
+                    byteOffset = patternBase + (quadY * 8) + (quadX * 16) + localY;
+                    bitPos = 7 - localX;
+                } else {
+                    byteOffset = patternBase + py;
+                    bitPos = 7 - px;
+                }
+
+                if (byteOffset < sprPat.length && (sprPat[byteOffset] >> bitPos) & 1) {
+                    ctx.fillRect(px * scale, py * scale, scale, scale);
+                }
+            }
+        }
+
+        document.getElementById("spritePatternInfo").textContent =
+            `Pattern #${patNum} (base offset: 0x${patternBase.toString(16).toUpperCase()})`;
+    },
+
+    renderPatternGrid: function() {
+        const canvas = document.getElementById("patternGridCanvas");
+        const ctx = canvas.getContext("2d");
+        const sprPat = MODEL.sprites.patterns;
+        const palette = CONFIG.PALETTE;
+        const colorIndex = parseInt(document.getElementById("patternGridColor").value) || 15;
+        const rgb = palette[colorIndex] || {r:255,g:255,b:255};
+
+        // Clear canvas (dark background)
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, 544, 544);
+
+        if (!MODEL.sprites.hasPatterns) {
+            ctx.fillStyle = "#888";
+            ctx.font = "14px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("No pattern data loaded", 272, 272);
+            return;
+        }
+
+        // Draw 8x8 grid of 64 patterns (each 16x16 pixels, displayed at 64x64 with spacing)
+        const cellSize = 64;  // Display size per pattern
+        const spacing = 4;    // Gap between patterns
+        const patternSize = 16; // Actual sprite size (16x16 mode)
+        const scale = cellSize / patternSize;
+
+        for (let gridY = 0; gridY < 8; gridY++) {
+            for (let gridX = 0; gridX < 8; gridX++) {
+                const patNum = gridY * 8 + gridX;
+                const baseX = gridX * (cellSize + spacing) + spacing;
+                const baseY = gridY * (cellSize + spacing) + spacing;
+
+                // Pattern background
+                ctx.fillStyle = "#222";
+                ctx.fillRect(baseX, baseY, cellSize, cellSize);
+
+                // Pattern number label
+                ctx.fillStyle = "#666";
+                ctx.font = "9px monospace";
+                ctx.textAlign = "left";
+                ctx.fillText(patNum.toString(), baseX + 2, baseY + 10);
+
+                // Draw 16x16 pattern (32 bytes)
+                const patternBase = patNum * 32;  // 16x16 = 32 bytes per pattern
+                ctx.fillStyle = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+
+                for (let py = 0; py < 16; py++) {
+                    for (let px = 0; px < 16; px++) {
+                        // 16x16 layout: bytes 0-7 = top-left, 8-15 = bottom-left,
+                        //               16-23 = top-right, 24-31 = bottom-right
+                        const quadX = px >= 8 ? 1 : 0;
+                        const quadY = py >= 8 ? 1 : 0;
+                        const localX = px % 8;
+                        const localY = py % 8;
+                        const byteOffset = patternBase + (quadY * 8) + (quadX * 16) + localY;
+                        const bitPos = 7 - localX;
+
+                        if (byteOffset < sprPat.length && (sprPat[byteOffset] >> bitPos) & 1) {
+                            ctx.fillRect(baseX + px * scale, baseY + py * scale, scale, scale);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Draw grid lines
+        ctx.strokeStyle = "#444";
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 8; i++) {
+            const pos = i * (cellSize + spacing) + spacing / 2;
+            ctx.beginPath();
+            ctx.moveTo(pos, 0);
+            ctx.lineTo(pos, 544);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, pos);
+            ctx.lineTo(544, pos);
+            ctx.stroke();
+        }
+
+        document.getElementById("patternGridInfo").textContent =
+            `64 patterns (0-63), 32 bytes each = 2048 bytes total`;
     }
 };
 
