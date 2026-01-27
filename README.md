@@ -57,6 +57,16 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 - **Color picker** - Sample colors directly from the canvas (Hotkey: I)
 - **Clipboard support** - Cut, copy, and paste selections (Ctrl+X, Ctrl+C, Ctrl+V)
 
+## Changelog
+
+### January 27, 2026 – New Features
+- **Drawing & navigation** – Added Tile Stamp (T), Fill Bucket (B), brush-size selector, fill/outline toggle, crosshair guide, mirror buttons, and spacebar panning for faster layout work.
+- **Palette utilities** – Remap Colors modal now supports canvas picking, swaps, and global recolors without repainting.
+- **Reference & projects** – File menu gains `.cvproj` snapshots (patterns, colors, sprites) plus translucent reference image loading with opacity slider and clear control.
+- **Sprite workflow** – Sprites menu handles `.sprpat/.sprattr` import/export, initialization, clearing, and exposes on-canvas sprite tools (multi-select, drag/nudge, collision overlay, layer dropdown, size toggle).
+- **Sprite editor overhaul** – Card-based UI with Add Sprite, Sort by Y, Early Clock toggles, inline previews, drag-to-reorder, and new Pattern Grid + Pattern Editor tabs (draw/invert/flip/rotate).
+- **SC2 export upgrade** – Saving `.sc2` now auto-detects when to embed sprite patterns, removing the separate “+ sprites” command.
+
 ## Getting Started
 
 1. Open [index.html](index.html) in any modern web browser
@@ -108,7 +118,7 @@ Works in all modern browsers supporting HTML5 Canvas and ES6:
 
 ## Credits
 
-**Coleco Paint Studio v12** by Amy - A tribute to the golden age of 8-bit gaming.
+**Amy's CV Paint Studio** by Amy Purple - A tribute to the golden age of 8-bit gaming.
 
 ---
 
