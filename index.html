@@ -188,6 +188,12 @@
                         <li><button class="dropdown-item" id="menuClearSprites">Clear All Sprites</button></li>
                     </ul>
                 </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle py-1" href="#" data-bs-toggle="dropdown">Tools</a>
+                    <ul class="dropdown-menu shadow">
+                        <li><button class="dropdown-item" id="menuTileReuse">Tile Reuse Analyzer</button></li>
+                    </ul>
+                </li>
             </ul>
 
             <div class="d-flex gap-2">
@@ -370,6 +376,26 @@
   </div>
 </div>
 
+<!-- Tile Reuse Analyzer Modal -->
+<div class="modal fade" id="tileReuseModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2" style="background: var(--amy-purple); color: white;">
+        <h5 class="modal-title fw-bold">Tile Reuse Analyzer</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="small text-muted mb-2">Duplicate 8×8 tiles are highlighted with matching colors. Unique tiles are left unhighlighted.</p>
+        <canvas id="tileReuseCanvas" width="512" height="384" style="image-rendering:pixelated;border:2px solid #333;background:#000;max-width:100%"></canvas>
+        <div class="mt-2 p-2 bg-light border rounded text-start" style="font-size:0.8rem">
+          <div class="fw-bold mb-1">Stats</div>
+          <div id="tileReuseStats"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="aboutModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -529,6 +555,21 @@
                     <hr class="my-2">
                     <div class="small text-muted mb-2">Quick Select:</div>
                     <canvas id="patternMiniGrid" width="160" height="160" style="border:1px solid #ccc; image-rendering: pixelated; cursor: pointer;"></canvas>
+                    <hr class="my-2">
+                    <div class="small fw-bold text-muted mb-1">Onion Skin</div>
+                    <div class="form-check mb-1">
+                      <input class="form-check-input" type="checkbox" id="chkOnionSkin">
+                      <label class="form-check-label small" for="chkOnionSkin">Enable ghost overlay</label>
+                    </div>
+                    <div class="d-flex gap-1 align-items-center mb-1">
+                      <label class="small" style="white-space:nowrap">Ghost #:</label>
+                      <input type="number" id="onionPatNum" class="form-control form-control-sm" min="0" max="63" value="0" style="width:60px" disabled>
+                      <button class="btn btn-outline-secondary btn-sm py-0 px-1" id="btnOnionPrev" title="Previous pattern" disabled>← Prev</button>
+                    </div>
+                    <div class="d-flex gap-1 align-items-center">
+                      <label class="small" style="white-space:nowrap">Opacity:</label>
+                      <input type="range" class="form-range form-range-sm" id="onionOpacity" min="10" max="80" value="30" style="flex:1" disabled>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2507,6 +2548,9 @@ const UI = {
             UI.setStatus("All sprites cleared (patterns preserved)");
         };
 
+        // Tools menu
+        document.getElementById("menuTileReuse").onclick = () => UI.analyzeTileReuse();
+
         // Drag Drop (only for external files, not internal element drags)
         const ol = document.getElementById("dropOverlay"); let dc=0;
         window.ondragenter = e => {
@@ -2754,6 +2798,108 @@ const UI = {
             this.setStatus(`Sprite #${firstIdx}: X=${x} Y=${y}`);
         }
         RENDERER.render();
+    },
+
+    analyzeTileReuse: function() {
+        const canvas = document.getElementById("tileReuseCanvas");
+        const ctx = canvas.getContext("2d");
+        const palette = CONFIG.PALETTE;
+
+        // 1. Render clean 256x192 bitmap
+        const img = ctx.createImageData(512, 384);
+        const dd = img.data;
+        for (let yT = 0; yT < 24; yT++) {
+            for (let xT = 0; xT < 32; xT++) {
+                for (let row = 0; row < 8; row++) {
+                    const c = yT * 256 + xT * 8 + row;
+                    const pB = MODEL.pattern[c], cB = MODEL.color[c];
+                    const fc = (cB >> 4) & 0xF, bc = cB & 0xF;
+                    for (let b = 0; b < 8; b++) {
+                        const idx = (pB & DEUX[b]) ? fc : bc;
+                        const rgb = idx === 0 ? { r: 0, g: 0, b: 0 } : palette[idx];
+                        const px = xT * 8 + b, py = yT * 8 + row;
+                        // 2x scale
+                        for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++) {
+                            const off = ((py * 2 + sy) * 512 + px * 2 + sx) * 4;
+                            dd[off] = rgb.r; dd[off + 1] = rgb.g; dd[off + 2] = rgb.b; dd[off + 3] = 255;
+                        }
+                    }
+                }
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+
+        // 2. Hash each 8x8 tile (pattern+color bytes)
+        const tileHashes = new Array(768);
+        const hashMap = {}; // hash -> [tileIndex, ...]
+        for (let t = 0; t < 768; t++) {
+            const yT = Math.floor(t / 32), xT = t % 32;
+            const base = yT * 256 + xT * 8;
+            let hash = "";
+            for (let r = 0; r < 8; r++) hash += String.fromCharCode(MODEL.pattern[base + r], MODEL.color[base + r]);
+            tileHashes[t] = hash;
+            if (!hashMap[hash]) hashMap[hash] = [];
+            hashMap[hash].push(t);
+        }
+
+        // 3. Assign colors to duplicate groups, overlay on canvas
+        const groupColors = [
+            [255,80,80],[80,180,255],[80,255,120],[255,200,60],[200,100,255],
+            [255,140,60],[60,255,220],[255,80,200],[160,255,80],[80,120,255],
+            [255,255,80],[80,255,255],[255,160,160],[160,255,200],[200,200,255]
+        ];
+        let colorIdx = 0;
+        let dupGroups = 0, dupTiles = 0;
+        const uniqueHashes = new Set();
+
+        ctx.globalAlpha = 0.4;
+        for (const hash in hashMap) {
+            const tiles = hashMap[hash];
+            uniqueHashes.add(hash);
+            if (tiles.length > 1) {
+                dupGroups++;
+                dupTiles += tiles.length;
+                const gc = groupColors[colorIdx % groupColors.length];
+                colorIdx++;
+                ctx.fillStyle = `rgb(${gc[0]},${gc[1]},${gc[2]})`;
+                for (const t of tiles) {
+                    const yT = Math.floor(t / 32), xT = t % 32;
+                    ctx.fillRect(xT * 16, yT * 16, 16, 16);
+                }
+            }
+        }
+        ctx.globalAlpha = 1.0;
+
+        // 4. Draw tile grid
+        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= 32; x++) { ctx.beginPath(); ctx.moveTo(x * 16, 0); ctx.lineTo(x * 16, 384); ctx.stroke(); }
+        for (let y = 0; y <= 24; y++) { ctx.beginPath(); ctx.moveTo(0, y * 16); ctx.lineTo(512, y * 16); ctx.stroke(); }
+        // Third boundaries
+        ctx.strokeStyle = "rgba(255,255,0,0.5)";
+        ctx.lineWidth = 2;
+        [8, 16].forEach(y => { ctx.beginPath(); ctx.moveTo(0, y * 16); ctx.lineTo(512, y * 16); ctx.stroke(); });
+
+        // 5. Per-third stats
+        const thirds = [0, 0, 0];
+        for (let third = 0; third < 3; third++) {
+            const seen = new Set();
+            for (let t = third * 256; t < (third + 1) * 256; t++) {
+                seen.add(tileHashes[t]);
+            }
+            thirds[third] = seen.size;
+        }
+
+        const uniqueCount = uniqueHashes.size;
+        const statsEl = document.getElementById("tileReuseStats");
+        statsEl.innerHTML =
+            `<b>Unique tiles:</b> ${uniqueCount} / 768 (${768 - uniqueCount} duplicates in ${dupGroups} groups)<br>` +
+            `<b>Top third:</b> ${thirds[0]} unique / 256 · ` +
+            `<b>Mid third:</b> ${thirds[1]} unique / 256 · ` +
+            `<b>Bottom third:</b> ${thirds[2]} unique / 256<br>` +
+            `<b>Potential savings:</b> ${768 - uniqueCount} tiles could be shared via name table`;
+
+        (bootstrap.Modal.getInstance(document.getElementById("tileReuseModal")) || new bootstrap.Modal(document.getElementById("tileReuseModal"))).show();
     },
 
     showSpriteEditor: function() {
@@ -3373,7 +3519,10 @@ const UI = {
     patternEditState: {
         currentPattern: 0,
         isDrawing: false,
-        drawValue: 1  // 1 = set pixel, 0 = clear pixel
+        drawValue: 1,  // 1 = set pixel, 0 = clear pixel
+        onionSkin: false,
+        onionPattern: 0,
+        onionOpacity: 0.3
     },
 
     initPatternEditor: function() {
@@ -3439,6 +3588,42 @@ const UI = {
             }
         };
 
+        // Onion skin controls
+        const chkOnion = document.getElementById("chkOnionSkin");
+        const onionPat = document.getElementById("onionPatNum");
+        const onionOp = document.getElementById("onionOpacity");
+        const btnPrev = document.getElementById("btnOnionPrev");
+        const toggleOnionControls = (on) => {
+            onionPat.disabled = !on;
+            onionOp.disabled = !on;
+            btnPrev.disabled = !on;
+        };
+        chkOnion.checked = self.patternEditState.onionSkin;
+        toggleOnionControls(self.patternEditState.onionSkin);
+        onionPat.value = self.patternEditState.onionPattern;
+        onionPat.max = is16x16 ? 63 : 255;
+        onionOp.value = self.patternEditState.onionOpacity * 100;
+
+        chkOnion.onchange = () => {
+            self.patternEditState.onionSkin = chkOnion.checked;
+            toggleOnionControls(chkOnion.checked);
+            self.renderPatternEditor();
+        };
+        onionPat.onchange = () => {
+            self.patternEditState.onionPattern = Math.max(0, parseInt(onionPat.value) || 0);
+            self.renderPatternEditor();
+        };
+        onionOp.oninput = () => {
+            self.patternEditState.onionOpacity = onionOp.value / 100;
+            self.renderPatternEditor();
+        };
+        btnPrev.onclick = () => {
+            const prev = Math.max(0, self.patternEditState.currentPattern - 1);
+            onionPat.value = prev;
+            self.patternEditState.onionPattern = prev;
+            self.renderPatternEditor();
+        };
+
         this.renderPatternEditor();
         this.renderPatternMiniGrid();
     },
@@ -3466,12 +3651,34 @@ const UI = {
 
         const patternBase = patNum * bytesPerPattern;
 
+        // Onion skin ghost layer
+        const os = this.patternEditState;
+        if (os.onionSkin && os.onionPattern !== patNum) {
+            const ghostBase = os.onionPattern * bytesPerPattern;
+            const ghostR = Math.round(rgb.r * 0.5 + 80);
+            const ghostG = Math.round(rgb.g * 0.3 + 40);
+            const ghostB = Math.round(rgb.b * 0.3 + 80);
+            for (let py = 0; py < patternSize; py++) {
+                for (let px = 0; px < patternSize; px++) {
+                    let bo, bp;
+                    if (is16x16) {
+                        bo = ghostBase + (py >= 8 ? 8 : 0) + (px >= 8 ? 16 : 0) + (py % 8);
+                        bp = 7 - (px % 8);
+                    } else { bo = ghostBase + py; bp = 7 - px; }
+                    if (bo < sprPat.length && (sprPat[bo] >> bp) & 1) {
+                        ctx.fillStyle = `rgba(${ghostR},${ghostG},${ghostB},${os.onionOpacity})`;
+                        ctx.fillRect(px * scale, py * scale, scale - 1, scale - 1);
+                    }
+                }
+            }
+        }
+
+        // Current pattern
         for (let py = 0; py < patternSize; py++) {
             for (let px = 0; px < patternSize; px++) {
                 let byteOffset, bitPos;
 
                 if (is16x16) {
-                    // 16x16 layout (4 quadrants)
                     const quadX = px >= 8 ? 1 : 0;
                     const quadY = py >= 8 ? 1 : 0;
                     const localX = px % 8;
@@ -3479,7 +3686,6 @@ const UI = {
                     byteOffset = patternBase + (quadY * 8) + (quadX * 16) + localY;
                     bitPos = 7 - localX;
                 } else {
-                    // 8x8 layout (simple)
                     byteOffset = patternBase + py;
                     bitPos = 7 - px;
                 }
@@ -3489,7 +3695,7 @@ const UI = {
                 if (isSet) {
                     ctx.fillStyle = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
                     ctx.fillRect(px * scale, py * scale, scale - 1, scale - 1);
-                } else {
+                } else if (!os.onionSkin || os.onionPattern === patNum) {
                     ctx.fillStyle = "#333";
                     ctx.fillRect(px * scale, py * scale, scale - 1, scale - 1);
                 }
