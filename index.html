@@ -1555,6 +1555,13 @@ const IO = {
         }
         MODEL.sprites.count = spriteCount;
         MODEL.sprites.enabled = spriteCount > 0;
+        // Clear slots after terminator to avoid garbage entries in sprite editor
+        for (let i = spriteCount; i < 32; i++) {
+            MODEL.sprites.attributes[i * 4] = 208;
+            MODEL.sprites.attributes[i * 4 + 1] = 0;
+            MODEL.sprites.attributes[i * 4 + 2] = 0;
+            MODEL.sprites.attributes[i * 4 + 3] = 0;
+        }
         // Auto-detect sprite size: if any pattern is not multiple of 4, assume 8x8
         MODEL.sprites.size16x16 = !has8x8Pattern;
 
@@ -1826,12 +1833,10 @@ const INPUT = {
                 if (clickedSprite >= 0) {
                     // Clicked on a sprite - select it (Ctrl to add/remove)
                     UI.selectSpriteLayer(clickedSprite, e.ctrlKey || e.metaKey);
-                    HISTORY.push();
                     STATE.spriteMoving = true;
                     return;
                 } else if (STATE.selectedSprites.length > 0) {
                     // Clicked empty area with sprites selected - move them there
-                    HISTORY.push();
                     const spriteSize = MODEL.sprites.size16x16 ? 16 : 8;
                     const x = Math.max(0, Math.min(255, p.x - Math.floor(spriteSize / 2)));
                     const y = Math.max(0, Math.min(255, p.y - Math.floor(spriteSize / 2)));
@@ -1920,7 +1925,7 @@ const INPUT = {
                         STATE.zoom.left = Math.max(0, Math.min(16, STATE.zoom.left - tileDx));
                         STATE.zoom.top = Math.max(0, Math.min(12, STATE.zoom.top - tileDy));
                     } else {
-                        MODEL.scroll(tileDx, -tileDy);
+                        MODEL.scroll(-tileDx, -tileDy);
                     }
                     STATE.panStart = { x: e.clientX, y: e.clientY };
                     RENDERER.render();
@@ -2004,7 +2009,7 @@ const INPUT = {
         // Mouse Up
         window.addEventListener("mouseup", () => {
             if(STATE.isPanning) { STATE.isPanning = false; if(STATE.spaceHeld) document.getElementById("paintCanvas").style.cursor = "grab"; }
-            if(STATE.spriteMoving) { STATE.spriteMoving = false; }
+            if(STATE.spriteMoving) { STATE.spriteMoving = false; HISTORY.push(); }
             if(STATE.isDrawing) { STATE.isDrawing = false; if (STATE.didModify) HISTORY.push(); }
         });
         
@@ -2053,7 +2058,7 @@ const INPUT = {
         window.addEventListener("keyup", e => {
             if(e.key === "Alt") c.classList.remove("cursor-pipette");
             if(e.key === " ") { STATE.spaceHeld = false; STATE.isPanning = false; c.style.cursor = ""; }
-            if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) STATE._spriteNudging = false;
+            if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key) && STATE._spriteNudging) { STATE._spriteNudging = false; HISTORY.push(); }
         });
     },
 
@@ -2690,7 +2695,7 @@ const UI = {
 
     moveSpriteBy: function(dx, dy) {
         if (STATE.selectedSprites.length === 0) return;
-        if (!STATE._spriteNudging) { HISTORY.push(); STATE._spriteNudging = true; }
+        if (!STATE._spriteNudging) { STATE._spriteNudging = true; }
         const attr = MODEL.sprites.attributes;
 
         // Move all selected sprites
@@ -2915,7 +2920,7 @@ const UI = {
         if (!MODEL.sprites.hasPatterns) return;
 
         const rgb = CONFIG.PALETTE[colorIdx] || {r:255,g:255,b:255};
-        const patternOffset = MODEL.sprites.size16x16 ? patternNum * 32 : patternNum * 8;
+        const patternOffset = MODEL.sprites.size16x16 ? (patternNum & 0xFC) * 8 : patternNum * 8;
 
         for (let py = 0; py < size; py++) {
             for (let px = 0; px < size; px++) {
