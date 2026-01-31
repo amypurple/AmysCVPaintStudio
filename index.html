@@ -52,16 +52,35 @@
     }
     .navbar-brand { letter-spacing: 1px; font-weight: 700; text-transform: uppercase; font-size: 1.1rem; }
 
-    .canvas-wrapper {
-        position: relative; background: #000; image-rendering: pixelated; 
-        overflow: hidden; width: 520px; height: 392px; margin: 0 auto; 
-        border: 4px solid #222; border-radius: 4px;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.3);
+    .canvas-frame {
+        display: grid;
+        grid-template-columns: 8px 512px 8px;
+        grid-template-rows: 8px 384px 8px;
+        margin: 0 auto;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     }
-    .canvas-wrapper canvas { position: absolute; inset: 0; width: 512px; height: 384px; }
+    .canvas-frame .corner { width: 8px; height: 8px; background: #222; }
+    .canvas-frame .corner-tl { border-radius: 8px 0 0 0; }
+    .canvas-frame .corner-tr { border-radius: 0 8px 0 0; }
+    .canvas-frame .corner-bl { border-radius: 0 0 0 8px; }
+    .canvas-frame .corner-br { border-radius: 0 0 8px 0; }
+    .canvas-frame .edge { background: #222; }
+    .canvas-frame .edge-t, .canvas-frame .edge-b { height: 8px; }
+    .canvas-frame .edge-l, .canvas-frame .edge-r { width: 8px; }
+    .canvas-wrapper {
+        position: relative;
+        width: 512px; height: 384px;
+        background: #000;
+        overflow: hidden;
+    }
+    .canvas-wrapper canvas {
+        position: absolute; left: 0; top: 0;
+        width: 512px; height: 384px;
+        image-rendering: pixelated; image-rendering: crisp-edges;
+    }
     
     .cursor-pen { cursor: crosshair; }
-    .cursor-eraser { cursor: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22><rect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 fill=%22white%22 stroke=%22black%22/><line x1=%225%22 y1=%225%22 x2=%2211%22 y2=%2211%22 stroke=%22black%22 stroke-width=%221.5%22/><line x1=%2211%22 y1=%225%22 x2=%225%22 y2=%2211%22 stroke=%22black%22 stroke-width=%221.5%22/></svg>') 8 8, crosshair; }
+    .cursor-eraser { cursor: crosshair; }
     .cursor-shape { cursor: crosshair; }
     .cursor-select { cursor: crosshair; }
     .cursor-paste { cursor: copy; }
@@ -149,7 +168,7 @@
 <div class="app-shell">
     <nav class="navbar navbar-expand-sm navbar-dark rounded-top">
         <div class="container-fluid">
-            <span class="navbar-brand"><span class="material-symbols-outlined me-1">videogame_asset</span> Amy's CV Paint Studio</span>
+            <span class="navbar-brand"><span class="material-symbols-outlined me-1">videogame_asset</span> Amy's CV Paint Studio<span id="unsavedIndicator" class="ms-1 text-warning" style="display:none" title="Unsaved changes">●</span></span>
             
             <ul class="navbar-nav me-auto">
                 <li class="nav-item dropdown">
@@ -199,8 +218,8 @@
             <div class="d-flex gap-2">
                  <button class="btn btn-sm btn-outline-light d-flex align-items-center py-0" id="btnAbout" title="About / Info"><span class="material-symbols-outlined" style="font-size:20px">help</span></button>
                 <div class="vr bg-secondary mx-1"></div>
-                <button class="btn btn-sm btn-secondary d-flex align-items-center py-0" id="btnUndo" title="Undo (Ctrl+Z)" disabled><span class="material-symbols-outlined" style="font-size:18px">undo</span></button>
-                <button class="btn btn-sm btn-secondary d-flex align-items-center py-0" id="btnRedo" title="Redo (Ctrl+Y)" disabled><span class="material-symbols-outlined" style="font-size:18px">redo</span></button>
+                <button class="btn btn-sm btn-secondary d-flex align-items-center py-0" id="btnUndo" title="Undo (Ctrl+Z)" disabled><span class="material-symbols-outlined" style="font-size:18px">undo</span><span id="undoCount" class="ms-1 small" style="font-size:0.65rem;min-width:14px"></span></button>
+                <button class="btn btn-sm btn-secondary d-flex align-items-center py-0" id="btnRedo" title="Redo (Ctrl+Y)" disabled><span class="material-symbols-outlined" style="font-size:18px">redo</span><span id="redoCount" class="ms-1 small" style="font-size:0.65rem;min-width:14px"></span></button>
             </div>
         </div>
     </nav>
@@ -210,31 +229,63 @@
             <div class="col-lg-8">
                 <div class="d-flex mb-2 flex-wrap gap-2 justify-content-center bg-white p-1 rounded border">
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollUp1"><span class="material-symbols-outlined">keyboard_arrow_up</span></button>
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollUp8"><span class="material-symbols-outlined">keyboard_double_arrow_up</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollUp1" title="Scroll up 1 tile"><span class="material-symbols-outlined">keyboard_arrow_up</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollUp8" title="Scroll up 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_up</span></button>
                     </div>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollDown1"><span class="material-symbols-outlined">keyboard_arrow_down</span></button>
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollDown8"><span class="material-symbols-outlined">keyboard_double_arrow_down</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollDown1" title="Scroll down 1 tile"><span class="material-symbols-outlined">keyboard_arrow_down</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollDown8" title="Scroll down 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_down</span></button>
                     </div>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollLeft1"><span class="material-symbols-outlined">keyboard_arrow_left</span></button>
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollLeft8"><span class="material-symbols-outlined">keyboard_double_arrow_left</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollLeft1" title="Scroll left 1 tile"><span class="material-symbols-outlined">keyboard_arrow_left</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollLeft8" title="Scroll left 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_left</span></button>
                     </div>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollRight1"><span class="material-symbols-outlined">keyboard_arrow_right</span></button>
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollRight8"><span class="material-symbols-outlined">keyboard_double_arrow_right</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollRight1" title="Scroll right 1 tile"><span class="material-symbols-outlined">keyboard_arrow_right</span></button>
+                        <button class="btn btn-outline-secondary py-0" id="btnScrollRight8" title="Scroll right 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_right</span></button>
                     </div>
                 </div>
 
-                <div class="canvas-wrapper mb-2">
-                    <canvas id="paintCanvas" width="256" height="192" class="cursor-pen"></canvas>
-                    <canvas id="gridCanvas" width="256" height="192"></canvas>
+                <div class="d-flex justify-content-center mb-2">
+                    <div class="canvas-frame">
+                        <div class="corner corner-tl"></div>
+                        <div class="edge edge-t"></div>
+                        <div class="corner corner-tr"></div>
+                        <div class="edge edge-l"></div>
+                        <div class="canvas-wrapper">
+                            <canvas id="paintCanvas" width="256" height="192" class="cursor-pen"></canvas>
+                            <canvas id="gridCanvas" width="256" height="192"></canvas>
+                        </div>
+                        <div class="edge edge-r"></div>
+                        <div class="corner corner-bl"></div>
+                        <div class="edge edge-b"></div>
+                        <div class="corner corner-br"></div>
+                    </div>
+                </div>
+
+                <!-- Animation Mode Bar -->
+                <div id="animModeBar" style="display:none;font-size:0.75rem" class="align-items-center gap-2 px-2 py-1 bg-dark text-white small mb-1 rounded-bottom">
+                    <span class="fw-bold" style="font-size:0.7rem">ANIM</span>
+                    <button class="btn btn-sm btn-outline-light py-0 px-1" id="animPrev" title="Previous frame" style="font-size:0.7rem">&#9664;</button>
+                    <span id="animFrameLabel" style="font-size:0.7rem">F0/0</span>
+                    <button class="btn btn-sm btn-outline-light py-0 px-1" id="animNext" title="Next frame" style="font-size:0.7rem">&#9654;</button>
+                    <span class="border-start border-secondary mx-1" style="height:16px"></span>
+                    <button class="btn btn-sm btn-outline-warning py-0 px-1" id="animSaveFrame" title="Overwrite current frame" style="font-size:0.7rem">&#128248; Save</button>
+                    <button class="btn btn-sm btn-outline-success py-0 px-1" id="animNewFrame" title="Copy &amp; append new frame" style="font-size:0.7rem">+ New</button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" id="animDelFrame" title="Delete current frame" style="font-size:0.7rem">&#128465;</button>
+                    <button class="btn btn-sm btn-outline-info py-0 px-1" id="animPlayBtn" title="Play/Stop" style="font-size:0.7rem">&#9654; Play</button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" id="animRecBtn" title="Record: drag sprites to capture frames" style="font-size:0.7rem">&#9679; Rec</button>
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-1" id="animOnionBtn" title="Onion skin" style="font-size:0.7rem">&#128123;</button>
+                    <span class="ms-auto"></span>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" id="animExitBtn" title="Exit animation mode" style="font-size:0.7rem">&#10005; Exit</button>
                 </div>
 
                 <div class="status-bar d-flex justify-content-between">
                     <span id="statusText">SYSTEM READY...</span>
-                    <span id="coordText">X:00 Y:00</span>
+                    <span class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm py-0 px-1 btn-outline-info" id="btnAnimMode" title="Toggle Animation Mode" style="display:none;font-size:0.65rem;line-height:1.2">Anim</button>
+                        <span id="coordText">X:00 Y:00</span>
+                    </span>
                 </div>
             </div>
 
@@ -243,7 +294,7 @@
                     <div class="col-6 col-lg-3">
                         <div class="mb-1 fw-bold small text-uppercase text-muted" style="font-size:0.75rem">Palette</div>
                         <div id="paletteContainer" class="d-flex flex-column gap-1"></div>
-                        <button class="btn btn-outline-secondary btn-sm w-100 mt-1" id="btnRemap" title="Remap Colors" style="font-size:0.7rem">Remap</button>
+                        <button class="btn btn-outline-secondary btn-sm w-100 mt-2" id="btnRemap" title="Remap Colors" style="font-size:0.7rem">Remap</button>
                     </div>
                     <div class="col-6 col-lg-9 d-flex flex-column">
                         <div class="mb-2 p-2 bg-white border rounded">
@@ -299,10 +350,10 @@
                             <button class="btn btn-outline-secondary py-1" id="btnZoom" title="Toggle Zoom (Z)">
                                 <span class="material-symbols-outlined" id="btnZoomIcon" style="font-size:18px">zoom_in</span> Zoom
                             </button>
-                            <button class="btn btn-outline-secondary py-1" id="btnSprites" title="Toggle Sprites" style="display:none;">
+                            <button class="btn btn-outline-secondary py-1" id="btnSprites" title="Show/Hide sprite layer" style="display:none;">
                                 <span class="material-symbols-outlined" style="font-size:18px">emoji_nature</span> Sprites
                             </button>
-                            <button class="btn btn-outline-secondary py-1" id="btnSpriteEdit" title="Edit Sprites" style="display:none;">
+                            <button class="btn btn-outline-secondary py-1" id="btnSpriteEdit" title="Open Sprite Editor" style="display:none;">
                                 <span class="material-symbols-outlined" style="font-size:18px">edit</span>
                             </button>
                         </div>
@@ -340,6 +391,18 @@
                             <div class="form-check mt-1">
                                 <input class="form-check-input" type="checkbox" id="chkCollisions">
                                 <label class="form-check-label small" for="chkCollisions" style="font-size:0.7rem">Show scanline limits (&gt;4 sprites)</label>
+                            </div>
+                            <!-- Inline sprite properties (visible when single sprite selected) -->
+                            <div id="inlineSpriteProps" style="display:none" class="mt-2 p-2 bg-white border rounded">
+                                <div class="d-flex gap-2 align-items-center mb-1">
+                                    <label class="small fw-bold mb-0" style="white-space:nowrap">Pat:</label>
+                                    <input type="number" id="inlineSprPat" class="form-control form-control-sm" min="0" max="255" style="width:55px">
+                                    <div class="form-check mb-0 ms-1">
+                                        <input class="form-check-input" type="checkbox" id="inlineSprEC">
+                                        <label class="form-check-label small" for="inlineSprEC">EC</label>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap gap-1" id="inlineSprColorRow"></div>
                             </div>
                         </div>
 
@@ -456,6 +519,7 @@
           <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabSpriteAttr">Attributes (32)</a></li>
           <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPatternGrid" onclick="UI.renderPatternGrid()" id="tabPatternGridLink">Pattern Grid</a></li>
           <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPatternEdit" onclick="UI.initPatternEditor()">Pattern Edit</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabSpriteAnim" onclick="UI.showAnimationTab()">Animation</a></li>
         </ul>
         <div class="tab-content">
           <!-- Tab 1: Attributes -->
@@ -564,6 +628,47 @@
                     <div class="d-flex gap-1 align-items-center">
                       <label class="small" style="white-space:nowrap">Opacity:</label>
                       <input type="range" class="form-range form-range-sm" id="onionOpacity" min="10" max="80" value="30" style="flex:1" disabled>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Tab 4: Animation -->
+          <div class="tab-pane fade" id="tabSpriteAnim">
+            <div class="row g-2">
+              <div class="col-md-5">
+                <div class="card">
+                  <div class="card-header py-1 small fw-bold">Preview</div>
+                  <div class="card-body text-center p-2">
+                    <canvas id="animPreviewCanvas" width="256" height="192" style="border:1px solid #333;image-rendering:pixelated;background:#000;width:100%;max-width:384px"></canvas>
+                    <div class="d-flex justify-content-center align-items-center gap-2 mt-2">
+                      <button class="btn btn-sm btn-success" id="btnAnimPlay" title="Play animation">▶ Play</button>
+                      <button class="btn btn-sm btn-secondary" id="btnAnimStop" title="Stop" disabled>⏸ Stop</button>
+                      <label class="small mb-0">FPS:</label>
+                      <input type="number" id="animFps" class="form-control form-control-sm" style="width:55px" min="1" max="60" value="10">
+                    </div>
+                    <div class="small text-muted mt-1" id="animFrameIndicator">No keyframes</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-7">
+                <div class="card h-100">
+                  <div class="card-header py-1 small fw-bold d-flex justify-content-between align-items-center">
+                    <span>Keyframes <span class="text-muted" id="animKeyframeCount">(0)</span></span>
+                    <div>
+                      <button class="btn btn-sm btn-success py-0 px-2" id="btnAnimCapture" title="Capture current sprite attributes as new keyframe">📸 Capture</button>
+                    </div>
+                  </div>
+                  <div class="card-body p-2">
+                    <div id="animKeyframeList" style="max-height:280px;overflow-y:auto">
+                      <div class="text-center text-muted small py-3" id="animNoFramesMsg">
+                        No keyframes yet. Set up sprites and click "Capture" to add a keyframe.
+                      </div>
+                    </div>
+                    <div class="d-flex gap-1 mt-2">
+                      <button class="btn btn-sm btn-outline-secondary flex-grow-1" id="btnAnimInsertAfter" disabled>+ Insert Copy After</button>
+                      <button class="btn btn-sm btn-outline-danger" id="btnAnimClearAll" disabled>Clear All</button>
                     </div>
                   </div>
                 </div>
@@ -715,6 +820,14 @@ const MODEL = {
         enabled: false,                    // Display toggle
         count: 0,                          // Number of visible sprites
         size16x16: true                    // Sprite size mode (true=16x16, false=8x8)
+    },
+
+    // Animation keyframes (sprite attribute snapshots for real hardware playback)
+    animation: {
+        keyframes: [],      // array of { name: string, spriteAttr: Uint8Array(128) }
+        currentFrame: -1,   // -1 = no animation / live editing
+        playing: false,
+        fps: 10
     },
 
     // Initialize the Name Table for Linear Mode 2
@@ -881,6 +994,49 @@ const RENDERER = {
                         } else {
                             const rgb = palette[idx];
                             d[off] = rgb.r; d[off+1] = rgb.g; d[off+2] = rgb.b; d[off+3] = 255;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 1a. Onion skin ghost sprites (previous animation frame)
+        if (UI._animOnionSkin && MODEL.animation.currentFrame > 0 && !MODEL.animation.playing) {
+            const prevKf = MODEL.animation.keyframes[MODEL.animation.currentFrame - 1];
+            if (prevKf) {
+                const ghostAttr = prevKf.spriteAttr;
+                const sprPat = MODEL.sprites.patterns;
+                const sprSize = MODEL.sprites.size16x16 ? 16 : 8;
+                for (let i = 31; i >= 0; i--) {
+                    const gy = ghostAttr[i * 4], gx = ghostAttr[i * 4 + 1];
+                    const gPat = ghostAttr[i * 4 + 2], gCB = ghostAttr[i * 4 + 3];
+                    if (gy === 208) continue;
+                    const gc = gCB & 0x0F;
+                    if (gc === 0) continue;
+                    const gec = (gCB & 0x80) !== 0;
+                    const sx = gx - (gec ? 32 : 0);
+                    const gRgb = palette[gc];
+                    const pb = sprSize === 16 ? (gPat & 0xFC) * 8 : gPat * 8;
+                    for (let py = 0; py < sprSize; py++) {
+                        let sy = gy + py + 1;
+                        if (gy > 208) sy = (gy - 256) + py + 1;
+                        if (sy < 0 || sy >= 192) continue;
+                        for (let px = 0; px < sprSize; px++) {
+                            const pixX = sx + px;
+                            if (pixX < 0 || pixX >= 256) continue;
+                            let bo, bp;
+                            if (sprSize === 16) {
+                                const qx = px >= 8 ? 1 : 0, qy = py >= 8 ? 1 : 0;
+                                bo = pb + (qy * 8) + (qx * 16) + (py % 8);
+                                bp = 7 - (px % 8);
+                            } else { bo = pb + py; bp = 7 - px; }
+                            if (bo < sprPat.length && (sprPat[bo] >> bp) & 1) {
+                                const off = (sy * 256 + pixX) * 4;
+                                // Blend at 35% opacity
+                                d[off] = Math.round(d[off] * 0.65 + gRgb.r * 0.35);
+                                d[off+1] = Math.round(d[off+1] * 0.65 + gRgb.g * 0.35);
+                                d[off+2] = Math.round(d[off+2] * 0.65 + gRgb.b * 0.35);
+                            }
                         }
                     }
                 }
@@ -1074,9 +1230,13 @@ const RENDERER = {
         // 5. Reference Image Overlay
         if(STATE.refImage) {
             this.ctx.globalAlpha = STATE.refOpacity;
+            const imgW = STATE.refImage.width, imgH = STATE.refImage.height;
             if(STATE.zoom.enabled) {
-                const sx = STATE.zoom.left*8, sy = STATE.zoom.top*8;
-                this.ctx.drawImage(STATE.refImage, sx, sy, 128, 96, 0, 0, 256, 192);
+                // Scale source coordinates to match reference image size
+                const scaleX = imgW / 256, scaleY = imgH / 192;
+                const sx = STATE.zoom.left * 8 * scaleX, sy = STATE.zoom.top * 8 * scaleY;
+                const sw = 128 * scaleX, sh = 96 * scaleY;
+                this.ctx.drawImage(STATE.refImage, sx, sy, sw, sh, 0, 0, 256, 192);
             } else {
                 this.ctx.drawImage(STATE.refImage, 0, 0, 256, 192);
             }
@@ -1240,12 +1400,13 @@ const TOOLS = {
     },
     
     circle: function(x0, y0, x1, y1, btn) {
-        let width = Math.abs(x1 - x0), height = Math.abs(y1 - y0);
-        let xc = Math.min(x0, x1) + Math.floor(width/2);
-        let yc = Math.min(y0, y1) + Math.floor(height/2);
-        let rx = width/2, ry = height/2;
-        for(let y=Math.min(y0,y1); y<=Math.max(y0,y1); y++) {
-            for(let x=Math.min(x0,x1); x<=Math.max(x0,x1); x++) {
+        // x0,y0 is center, x1,y1 defines the radius
+        let rx = Math.abs(x1 - x0), ry = Math.abs(y1 - y0);
+        let xc = x0, yc = y0;
+        let left = xc - rx, right = xc + rx, top = yc - ry, bottom = yc + ry;
+        for(let y = top; y <= bottom; y++) {
+            for(let x = left; x <= right; x++) {
+                if (x < 0 || x >= 256 || y < 0 || y >= 192) continue;
                 let dx = (x - xc) / (rx || 1);
                 let dy = (y - yc) / (ry || 1);
                 let d = dx*dx + dy*dy;
@@ -1462,8 +1623,21 @@ const IO = {
                         MODEL.sprites.attributes.set(proj.sprites.attributes);
                         MODEL.sprites.patterns.set(proj.sprites.patterns);
                     }
+                    // Load animation keyframes if present
+                    if (proj.animation) {
+                        MODEL.animation.fps = proj.animation.fps || 10;
+                        MODEL.animation.keyframes = proj.animation.keyframes.map(kf => ({
+                            name: kf.name,
+                            spriteAttr: new Uint8Array(kf.spriteAttr)
+                        }));
+                        MODEL.animation.currentFrame = -1;
+                        MODEL.animation.playing = false;
+                    } else {
+                        MODEL.animation.keyframes = [];
+                        MODEL.animation.currentFrame = -1;
+                    }
                     UI.updateSpriteUI();
-                    UI.setStatus("LOADED PROJECT"); HISTORY.push(); RENDERER.render();
+                    UI.setStatus("LOADED PROJECT" + (MODEL.animation.keyframes.length > 0 ? ` (${MODEL.animation.keyframes.length} anim frames)` : "")); HISTORY.push(); RENDERER.render();
                 } catch(err) { alert("Error loading project: " + err.message); }
             };
             tr.readAsText(file);
@@ -2045,7 +2219,7 @@ const INPUT = {
         // Mouse Up
         window.addEventListener("mouseup", () => {
             if(STATE.isPanning) { STATE.isPanning = false; if(STATE.spaceHeld) document.getElementById("paintCanvas").style.cursor = "grab"; }
-            if(STATE.spriteMoving) { STATE.spriteMoving = false; HISTORY.push(); }
+            if(STATE.spriteMoving) { STATE.spriteMoving = false; HISTORY.push(); if(UI._animRecording) UI.animCaptureRecFrame(); }
             if(STATE.isDrawing) { STATE.isDrawing = false; if (STATE.didModify) HISTORY.push(); }
         });
         
@@ -2087,6 +2261,7 @@ const INPUT = {
             if(k==='h' && !ctrl && !e.shiftKey) document.getElementById("btnCrosshair").click();
             if(k==='h' && !ctrl && e.shiftKey) { e.preventDefault(); document.getElementById("btnMirrorH").click(); }
             if(k==='v' && !ctrl && e.shiftKey) { e.preventDefault(); document.getElementById("btnMirrorV").click(); }
+            if(k==='.' && MODEL.animation.currentFrame >= 0) { UI.animToggleRecord(); return; }
             if(e.key === "Alt") c.classList.add("cursor-pipette");
             if(e.key === " ") { e.preventDefault(); STATE.spaceHeld = true; c.style.cursor = "grab"; }
         });
@@ -2213,9 +2388,11 @@ const UI = {
         // Buttons
         document.getElementById("btnUndo").onclick = () => HISTORY.undo();
         document.getElementById("btnRedo").onclick = () => HISTORY.redo();
-        document.getElementById("btnClear").onclick = () => { if(confirm("Clear?")) { MODEL.clear(STATE.fgIndex, STATE.bgIndex); STATE.selection = null; STATE.isPasting = false; MODEL.clipboard = null; MODEL.sprites.attributes.fill(0); for(let i=0;i<32;i++) MODEL.sprites.attributes[i*4]=208; MODEL.sprites.patterns.fill(0); MODEL.sprites.count=0; MODEL.sprites.enabled=false; MODEL.sprites.hasPatterns=false; STATE.selectedSprites=[]; UI.updateSpriteUI(); RENDERER.render(); HISTORY.push(); }};
+        document.getElementById("btnClear").onclick = () => { if(confirm("Clear?")) { MODEL.clear(STATE.fgIndex, STATE.bgIndex); STATE.selection = null; STATE.isPasting = false; MODEL.clipboard = null; MODEL.sprites.attributes.fill(0); for(let i=0;i<32;i++) MODEL.sprites.attributes[i*4]=208; MODEL.sprites.patterns.fill(0); MODEL.sprites.count=0; MODEL.sprites.enabled=false; MODEL.sprites.hasPatterns=false; STATE.selectedSprites=[]; MODEL.animation.keyframes=[]; MODEL.animation.currentFrame=-1; MODEL.animation.playing=false; if(MODEL.animation._interval){clearInterval(MODEL.animation._interval);MODEL.animation._interval=null;} UI.updateSpriteUI(); RENDERER.render(); HISTORY.push(); }};
         document.getElementById("btnGrid").onclick = () => { STATE.gridEnabled = !STATE.gridEnabled; RENDERER.render(); };
         document.getElementById("chkCollisions").onchange = (e) => { STATE.showCollisions = e.target.checked; RENDERER.drawGrid(); };
+        this._initInlineSpriteHandlers();
+        this._initAnimModeHandlers();
         [1,2,3,4].forEach(n => {
             document.getElementById("penSize"+n).onclick = () => {
                 STATE.penSize = n;
@@ -2365,6 +2542,15 @@ const UI = {
                     patterns: Array.from(MODEL.sprites.patterns)
                 }
             };
+            if (MODEL.animation.keyframes.length > 0) {
+                proj.animation = {
+                    fps: MODEL.animation.fps,
+                    keyframes: MODEL.animation.keyframes.map(kf => ({
+                        name: kf.name,
+                        spriteAttr: Array.from(kf.spriteAttr)
+                    }))
+                };
+            }
             const json = JSON.stringify(proj);
             IO.saveBlob(new Blob([json], {type:"application/json"}), "project.cvproj");
         };
@@ -2546,6 +2732,17 @@ const UI = {
         // Tools menu
         document.getElementById("menuTileReuse").onclick = () => UI.analyzeTileReuse();
 
+        // Animation tab buttons
+        document.getElementById("btnAnimCapture").onclick = () => UI.captureKeyframe();
+        document.getElementById("btnAnimInsertAfter").onclick = () => UI.insertAfterKeyframe();
+        document.getElementById("btnAnimClearAll").onclick = () => UI.clearAllKeyframes();
+        document.getElementById("btnAnimPlay").onclick = () => UI.animPlay();
+        document.getElementById("btnAnimStop").onclick = () => UI.animStop();
+        document.getElementById("animFps").onchange = (e) => {
+            MODEL.animation.fps = Math.max(1, Math.min(60, parseInt(e.target.value) || 10));
+            if (MODEL.animation.playing) { UI.animStop(); UI.animPlay(); }
+        };
+
         // Drag Drop (only for external files, not internal element drags)
         const ol = document.getElementById("dropOverlay"); let dc=0;
         window.ondragenter = e => {
@@ -2592,8 +2789,13 @@ const UI = {
     },
     
     updateUndo: function() {
-        document.getElementById("btnUndo").disabled = (HISTORY.pointer <= 0);
-        document.getElementById("btnRedo").disabled = (HISTORY.pointer >= HISTORY.stack.length - 1);
+        const undoAvail = HISTORY.pointer;
+        const redoAvail = HISTORY.stack.length - 1 - HISTORY.pointer;
+        document.getElementById("btnUndo").disabled = (undoAvail <= 0);
+        document.getElementById("btnRedo").disabled = (redoAvail <= 0);
+        document.getElementById("undoCount").textContent = undoAvail > 0 ? undoAvail : "";
+        document.getElementById("redoCount").textContent = redoAvail > 0 ? redoAvail : "";
+        document.getElementById("unsavedIndicator").style.display = undoAvail > 0 ? "" : "none";
     },
     
     setStatus: function(msg) {
@@ -2621,6 +2823,11 @@ const UI = {
 
         // Layer panel
         document.getElementById("spriteLayerPanel").style.display = hasSprites ? "" : "none";
+
+        // Anim button - only when sprites exist
+        document.getElementById("btnAnimMode").style.display = hasSprites ? "" : "none";
+        // If sprites removed while in anim mode, exit
+        if (!hasSprites && MODEL.animation.currentFrame >= 0) this.exitAnimMode();
 
         if (hasSprites) {
             this.updateSpriteLayerSelect();
@@ -2715,6 +2922,7 @@ const UI = {
         const select = document.getElementById("spriteLayerSelect");
         select.value = STATE.selectedSprites.length > 0 ? STATE.selectedSprites[0] : -1;
 
+        this.updateInlineSpriteProps();
         RENDERER.render();
     },
 
@@ -2730,6 +2938,221 @@ const UI = {
         } else {
             this.setStatus(`${count} sprites selected - Drag or arrows to move together`);
         }
+    },
+
+    updateInlineSpriteProps: function() {
+        const panel = document.getElementById("inlineSpriteProps");
+        if (STATE.selectedSprites.length !== 1) {
+            panel.style.display = "none";
+            return;
+        }
+        panel.style.display = "";
+        const idx = STATE.selectedSprites[0];
+        const attr = MODEL.sprites.attributes;
+        const patByte = attr[idx * 4 + 2];
+        const colorByte = attr[idx * 4 + 3];
+        const ec = (colorByte & 0x80) !== 0;
+        const color = colorByte & 0x0F;
+
+        document.getElementById("inlineSprPat").value = patByte;
+        document.getElementById("inlineSprEC").checked = ec;
+
+        // Build 16 color swatches
+        const row = document.getElementById("inlineSprColorRow");
+        row.innerHTML = "";
+        for (let c = 0; c < 16; c++) {
+            const sw = document.createElement("div");
+            const rgb = CONFIG.PALETTE[c];
+            sw.style.cssText = `width:16px;height:16px;border-radius:2px;cursor:pointer;border:2px solid ${c === color ? "#000" : "#ccc"};background:rgb(${rgb.r},${rgb.g},${rgb.b})`;
+            sw.title = CONFIG.PALETTE[c].name;
+            sw.dataset.color = c;
+            sw.addEventListener("click", function() {
+                if (STATE.selectedSprites.length !== 1) return;
+                const si = STATE.selectedSprites[0];
+                const old = MODEL.sprites.attributes[si * 4 + 3];
+                MODEL.sprites.attributes[si * 4 + 3] = (old & 0xF0) | (parseInt(this.dataset.color));
+                HISTORY.push();
+                UI.updateInlineSpriteProps();
+                RENDERER.render();
+            });
+            row.appendChild(sw);
+        }
+    },
+
+    _initInlineSpriteHandlers: function() {
+        document.getElementById("inlineSprPat").addEventListener("change", function() {
+            if (STATE.selectedSprites.length !== 1) return;
+            const idx = STATE.selectedSprites[0];
+            MODEL.sprites.attributes[idx * 4 + 2] = Math.max(0, Math.min(255, parseInt(this.value) || 0));
+            HISTORY.push();
+            RENDERER.render();
+        });
+        document.getElementById("inlineSprEC").addEventListener("change", function() {
+            if (STATE.selectedSprites.length !== 1) return;
+            const idx = STATE.selectedSprites[0];
+            const old = MODEL.sprites.attributes[idx * 4 + 3];
+            MODEL.sprites.attributes[idx * 4 + 3] = this.checked ? (old | 0x80) : (old & 0x7F);
+            HISTORY.push();
+            RENDERER.render();
+        });
+    },
+
+    // === Animation Mode ===
+    _animOnionSkin: false,
+
+    enterAnimMode: function() {
+        const anim = MODEL.animation;
+        if (anim.keyframes.length === 0) {
+            // Auto-capture first frame
+            anim.keyframes.push({ name: "Frame 1", spriteAttr: new Uint8Array(MODEL.sprites.attributes) });
+        }
+        anim.currentFrame = 0;
+        this.loadAnimFrame(0);
+        document.getElementById("animModeBar").style.display = "flex";
+        document.getElementById("btnAnimMode").classList.replace("btn-outline-info", "btn-info");
+        this.updateAnimBar();
+    },
+
+    exitAnimMode: function() {
+        this.stopAnimPlay();
+        if (this._animRecording) this.animStopRecord();
+        MODEL.animation.currentFrame = -1;
+        this._animOnionSkin = false;
+        document.getElementById("animModeBar").style.display = "none";
+        document.getElementById("btnAnimMode").classList.replace("btn-info", "btn-outline-info");
+        RENDERER.render();
+    },
+
+    updateAnimBar: function() {
+        const anim = MODEL.animation;
+        const total = anim.keyframes.length;
+        const cur = anim.currentFrame + 1;
+        document.getElementById("animFrameLabel").textContent = `F${cur}/${total}`;
+        document.getElementById("animOnionBtn").style.opacity = this._animOnionSkin ? 1 : 0.5;
+    },
+
+    loadAnimFrame: function(idx) {
+        const anim = MODEL.animation;
+        if (idx < 0 || idx >= anim.keyframes.length) return;
+        anim.currentFrame = idx;
+        MODEL.sprites.attributes.set(anim.keyframes[idx].spriteAttr);
+        UI.updateSpriteUI();
+        this.updateAnimBar();
+        this.updateInlineSpriteProps();
+        RENDERER.render();
+    },
+
+    animPrevFrame: function() {
+        const anim = MODEL.animation;
+        if (anim.currentFrame > 0) this.loadAnimFrame(anim.currentFrame - 1);
+    },
+
+    animNextFrame: function() {
+        const anim = MODEL.animation;
+        if (anim.currentFrame < anim.keyframes.length - 1) this.loadAnimFrame(anim.currentFrame + 1);
+    },
+
+    animSaveFrame: function() {
+        const anim = MODEL.animation;
+        if (anim.currentFrame < 0) return;
+        anim.keyframes[anim.currentFrame].spriteAttr = new Uint8Array(MODEL.sprites.attributes);
+        UI.setStatus("Frame " + (anim.currentFrame + 1) + " saved");
+    },
+
+    animNewFrame: function() {
+        const anim = MODEL.animation;
+        const newKf = { name: "Frame " + (anim.keyframes.length + 1), spriteAttr: new Uint8Array(MODEL.sprites.attributes) };
+        anim.keyframes.splice(anim.currentFrame + 1, 0, newKf);
+        this.loadAnimFrame(anim.currentFrame + 1);
+    },
+
+    animDeleteFrame: function() {
+        const anim = MODEL.animation;
+        if (anim.keyframes.length <= 1) { UI.setStatus("Cannot delete last frame"); return; }
+        anim.keyframes.splice(anim.currentFrame, 1);
+        const newIdx = Math.min(anim.currentFrame, anim.keyframes.length - 1);
+        this.loadAnimFrame(newIdx);
+    },
+
+    _animRecording: false,
+
+    animToggleRecord: function() {
+        if (this._animRecording) {
+            this.animStopRecord();
+        } else {
+            this.animStartRecord();
+        }
+    },
+
+    animStartRecord: function() {
+        this._animRecording = true;
+        const btn = document.getElementById("animRecBtn");
+        btn.classList.replace("btn-outline-danger", "btn-danger");
+        btn.innerHTML = "&#9632; Stop";
+        UI.setStatus("Recording... drag sprites to capture frames, click Stop when done");
+    },
+
+    animCaptureRecFrame: function() {
+        const anim = MODEL.animation;
+        if (anim.keyframes.length >= 120) { this.animStopRecord(); UI.setStatus("Max 120 frames reached"); return; }
+        const newKf = { name: "Frame " + (anim.keyframes.length + 1), spriteAttr: new Uint8Array(MODEL.sprites.attributes) };
+        anim.keyframes.push(newKf);
+        anim.currentFrame = anim.keyframes.length - 1;
+        this.updateAnimBar();
+        UI.setStatus("Frame " + anim.keyframes.length + " captured");
+    },
+
+    animStopRecord: function() {
+        this._animRecording = false;
+        const btn = document.getElementById("animRecBtn");
+        btn.classList.replace("btn-danger", "btn-outline-danger");
+        btn.innerHTML = "&#9679; Rec";
+        document.getElementById("animRecSpeed").style.display = "none";
+        this.updateAnimBar();
+        UI.setStatus("Recording stopped — " + MODEL.animation.keyframes.length + " frames total");
+    },
+
+    animPlayOnCanvas: function() {
+        const anim = MODEL.animation;
+        if (anim.keyframes.length < 2) return;
+        if (anim.playing) { this.stopAnimPlay(); return; }
+        anim.playing = true;
+        document.getElementById("animPlayBtn").innerHTML = "&#9632; Stop";
+        let frame = anim.currentFrame;
+        anim._canvasInterval = setInterval(() => {
+            frame = (frame + 1) % anim.keyframes.length;
+            MODEL.sprites.attributes.set(anim.keyframes[frame].spriteAttr);
+            anim.currentFrame = frame;
+            this.updateAnimBar();
+            RENDERER.render();
+        }, 1000 / (anim.fps || 10));
+    },
+
+    stopAnimPlay: function() {
+        const anim = MODEL.animation;
+        if (anim._canvasInterval) { clearInterval(anim._canvasInterval); anim._canvasInterval = null; }
+        anim.playing = false;
+        document.getElementById("animPlayBtn").innerHTML = "&#9654; Play";
+    },
+
+    _initAnimModeHandlers: function() {
+        document.getElementById("btnAnimMode").onclick = () => {
+            if (MODEL.animation.currentFrame >= 0) this.exitAnimMode();
+            else this.enterAnimMode();
+        };
+        document.getElementById("animPrev").onclick = () => this.animPrevFrame();
+        document.getElementById("animNext").onclick = () => this.animNextFrame();
+        document.getElementById("animSaveFrame").onclick = () => this.animSaveFrame();
+        document.getElementById("animNewFrame").onclick = () => this.animNewFrame();
+        document.getElementById("animDelFrame").onclick = () => this.animDeleteFrame();
+        document.getElementById("animPlayBtn").onclick = () => this.animPlayOnCanvas();
+        document.getElementById("animRecBtn").onclick = () => this.animToggleRecord();
+        document.getElementById("animOnionBtn").onclick = () => {
+            this._animOnionSkin = !this._animOnionSkin;
+            this.updateAnimBar();
+            RENDERER.render();
+        };
+        document.getElementById("animExitBtn").onclick = () => this.exitAnimMode();
     },
 
     moveSpriteBy: function(dx, dy) {
@@ -2793,6 +3216,251 @@ const UI = {
             this.setStatus(`Sprite #${firstIdx}: X=${x} Y=${y}`);
         }
         RENDERER.render();
+    },
+
+    // ---- Animation Timeline ----
+    showAnimationTab: function() {
+        const anim = MODEL.animation;
+        document.getElementById("animFps").value = anim.fps;
+        this.renderAnimKeyframeList();
+        // Render first frame preview if available
+        if (anim.keyframes.length > 0 && !anim.playing) {
+            this.renderAnimPreview(Math.max(0, anim.currentFrame));
+        }
+    },
+
+    renderAnimKeyframeList: function() {
+        const anim = MODEL.animation;
+        const list = document.getElementById("animKeyframeList");
+        document.getElementById("animKeyframeCount").textContent = `(${anim.keyframes.length})`;
+
+        if (anim.keyframes.length === 0) {
+            list.innerHTML = `<div class="text-center text-muted small py-3">
+                No keyframes yet. Set up sprites and click "Capture" to add a keyframe.</div>`;
+            document.getElementById("btnAnimInsertAfter").disabled = true;
+            document.getElementById("btnAnimClearAll").disabled = true;
+            document.getElementById("animFrameIndicator").textContent = "No keyframes";
+            return;
+        }
+        document.getElementById("btnAnimInsertAfter").disabled = false;
+        document.getElementById("btnAnimClearAll").disabled = false;
+
+        list.innerHTML = "";
+        anim.keyframes.forEach((kf, i) => {
+            // Count sprites in this keyframe
+            let cnt = 0;
+            for (let s = 0; s < 32; s++) { if (kf.spriteAttr[s * 4] === 208) break; cnt++; }
+
+            const row = document.createElement("div");
+            row.className = "d-flex align-items-center gap-1 py-1 px-2 rounded mb-1";
+            row.style.cssText = i === anim.currentFrame
+                ? "background:#e3f2fd;border:1px solid #90caf9"
+                : "background:#f8f9fa;border:1px solid #dee2e6";
+
+            row.innerHTML = `
+                <span class="small fw-bold" style="width:24px">${i + 1}.</span>
+                <input type="text" class="form-control form-control-sm border-0 bg-transparent py-0"
+                    value="${kf.name}" style="font-size:0.78rem;flex:1" data-anim-idx="${i}">
+                <span class="small text-muted" style="white-space:nowrap">(${cnt} spr)</span>
+                <button class="btn btn-outline-primary btn-sm py-0 px-1" data-anim-load="${i}" title="Load into editor" style="font-size:0.7rem">Load</button>
+                <button class="btn btn-outline-secondary btn-sm py-0 px-1" data-anim-copy="${i}" title="Duplicate" style="font-size:0.7rem">Copy</button>
+                <button class="btn btn-outline-danger btn-sm py-0 px-1" data-anim-del="${i}" title="Delete" style="font-size:0.7rem">✕</button>
+            `;
+            list.appendChild(row);
+        });
+
+        // Event listeners
+        list.querySelectorAll("[data-anim-load]").forEach(btn => {
+            btn.onclick = () => this.loadKeyframe(parseInt(btn.dataset.animLoad));
+        });
+        list.querySelectorAll("[data-anim-copy]").forEach(btn => {
+            btn.onclick = () => this.copyKeyframe(parseInt(btn.dataset.animCopy));
+        });
+        list.querySelectorAll("[data-anim-del]").forEach(btn => {
+            btn.onclick = () => this.deleteKeyframe(parseInt(btn.dataset.animDel));
+        });
+        list.querySelectorAll("[data-anim-idx]").forEach(inp => {
+            inp.onchange = () => {
+                MODEL.animation.keyframes[parseInt(inp.dataset.animIdx)].name = inp.value;
+            };
+        });
+
+        this.updateAnimFrameIndicator();
+    },
+
+    updateAnimFrameIndicator: function() {
+        const anim = MODEL.animation;
+        if (anim.keyframes.length === 0) {
+            document.getElementById("animFrameIndicator").textContent = "No keyframes";
+        } else if (anim.playing) {
+            document.getElementById("animFrameIndicator").textContent =
+                `Playing: ${anim.currentFrame + 1} / ${anim.keyframes.length}`;
+        } else {
+            document.getElementById("animFrameIndicator").textContent =
+                `${anim.keyframes.length} keyframe${anim.keyframes.length !== 1 ? "s" : ""}`;
+        }
+    },
+
+    captureKeyframe: function() {
+        const anim = MODEL.animation;
+        const kf = {
+            name: `Frame ${anim.keyframes.length + 1}`,
+            spriteAttr: new Uint8Array(MODEL.sprites.attributes)
+        };
+        anim.keyframes.push(kf);
+        anim.currentFrame = anim.keyframes.length - 1;
+        this.renderAnimKeyframeList();
+        this.renderAnimPreview(anim.currentFrame);
+        UI.setStatus(`CAPTURED keyframe ${anim.keyframes.length}`);
+    },
+
+    loadKeyframe: function(index) {
+        const anim = MODEL.animation;
+        if (index < 0 || index >= anim.keyframes.length) return;
+        MODEL.sprites.attributes.set(anim.keyframes[index].spriteAttr);
+        // Recount sprites
+        let cnt = 0;
+        for (let i = 0; i < 32; i++) { if (MODEL.sprites.attributes[i * 4] === 208) break; cnt++; }
+        MODEL.sprites.count = cnt;
+        MODEL.sprites.enabled = cnt > 0;
+        anim.currentFrame = index;
+        UI.updateSpriteUI();
+        RENDERER.render();
+        this.renderAnimKeyframeList();
+        this.renderAnimPreview(index);
+        UI.setStatus(`LOADED keyframe ${index + 1}: "${anim.keyframes[index].name}"`);
+    },
+
+    copyKeyframe: function(index) {
+        const anim = MODEL.animation;
+        if (index < 0 || index >= anim.keyframes.length) return;
+        const src = anim.keyframes[index];
+        const kf = {
+            name: src.name + " (copy)",
+            spriteAttr: new Uint8Array(src.spriteAttr)
+        };
+        anim.keyframes.splice(index + 1, 0, kf);
+        anim.currentFrame = index + 1;
+        this.renderAnimKeyframeList();
+    },
+
+    insertAfterKeyframe: function() {
+        const anim = MODEL.animation;
+        if (anim.keyframes.length === 0) { this.captureKeyframe(); return; }
+        const idx = Math.max(0, anim.currentFrame);
+        this.copyKeyframe(idx);
+    },
+
+    deleteKeyframe: function(index) {
+        const anim = MODEL.animation;
+        if (index < 0 || index >= anim.keyframes.length) return;
+        anim.keyframes.splice(index, 1);
+        if (anim.currentFrame >= anim.keyframes.length) anim.currentFrame = anim.keyframes.length - 1;
+        this.renderAnimKeyframeList();
+        if (anim.keyframes.length > 0 && anim.currentFrame >= 0) {
+            this.renderAnimPreview(anim.currentFrame);
+        } else {
+            const ctx = document.getElementById("animPreviewCanvas").getContext("2d");
+            ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 256, 192);
+        }
+    },
+
+    clearAllKeyframes: function() {
+        if (!confirm("Delete all keyframes?")) return;
+        MODEL.animation.keyframes = [];
+        MODEL.animation.currentFrame = -1;
+        this.renderAnimKeyframeList();
+        const ctx = document.getElementById("animPreviewCanvas").getContext("2d");
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 256, 192);
+    },
+
+    renderAnimPreview: function(frameIndex) {
+        const anim = MODEL.animation;
+        const canvas = document.getElementById("animPreviewCanvas");
+        const ctx = canvas.getContext("2d");
+        const palette = CONFIG.PALETTE;
+
+        // Render bitmap background
+        const img = ctx.createImageData(256, 192);
+        const dd = img.data;
+        for (let yT = 0; yT < 24; yT++) for (let xT = 0; xT < 32; xT++) for (let row = 0; row < 8; row++) {
+            const c = yT * 256 + xT * 8 + row;
+            const pB = MODEL.pattern[c], cB = MODEL.color[c];
+            const fc = (cB >> 4) & 0xF, bc = cB & 0xF;
+            for (let b = 0; b < 8; b++) {
+                const idx = (pB & DEUX[b]) ? fc : bc;
+                const rgb = idx === 0 ? { r: 0, g: 0, b: 0 } : palette[idx];
+                const off = ((yT * 8 + row) * 256 + xT * 8 + b) * 4;
+                dd[off] = rgb.r; dd[off + 1] = rgb.g; dd[off + 2] = rgb.b; dd[off + 3] = 255;
+            }
+        }
+
+        // Render sprites from this keyframe
+        if (frameIndex >= 0 && frameIndex < anim.keyframes.length) {
+            const sprAttr = anim.keyframes[frameIndex].spriteAttr;
+            const sprPat = MODEL.sprites.patterns;
+            const sprSize = MODEL.sprites.size16x16 ? 16 : 8;
+            let cnt = 0;
+            for (let s = 0; s < 32; s++) { if (sprAttr[s * 4] === 208) break; cnt++; }
+
+            for (let i = cnt - 1; i >= 0; i--) {
+                const sy = sprAttr[i * 4], sx = sprAttr[i * 4 + 1], sp = sprAttr[i * 4 + 2], scb = sprAttr[i * 4 + 3];
+                if (sy === 208) continue;
+                const sc = scb & 0xF; if (sc === 0) continue;
+                const ec = (scb & 0x80) !== 0;
+                const screenX = sx - (ec ? 32 : 0);
+                const srgb = palette[sc];
+                const pb = sprSize === 16 ? (sp & 0xFC) * 8 : sp * 8;
+                for (let py = 0; py < sprSize; py++) {
+                    let screenY = sy + py + 1; if (sy > 208) screenY = (sy - 256) + py + 1;
+                    if (screenY < 0 || screenY >= 192) continue;
+                    for (let px = 0; px < sprSize; px++) {
+                        const pixX = screenX + px; if (pixX < 0 || pixX >= 256) continue;
+                        let bo, bp;
+                        if (sprSize === 16) { const qx = px >= 8 ? 1 : 0, qy = py >= 8 ? 1 : 0; bo = pb + (qy * 8) + (qx * 16) + (py % 8); bp = 7 - (px % 8); }
+                        else { bo = pb + py; bp = 7 - px; }
+                        if (bo < sprPat.length && (sprPat[bo] >> bp) & 1) {
+                            const off = (screenY * 256 + pixX) * 4;
+                            dd[off] = srgb.r; dd[off + 1] = srgb.g; dd[off + 2] = srgb.b;
+                        }
+                    }
+                }
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+    },
+
+    animPlay: function() {
+        const anim = MODEL.animation;
+        if (anim.keyframes.length < 2) { UI.setStatus("Need at least 2 keyframes to play"); return; }
+        anim.playing = true;
+        anim.fps = Math.max(1, Math.min(60, parseInt(document.getElementById("animFps").value) || 10));
+        if (anim.currentFrame < 0) anim.currentFrame = 0;
+        document.getElementById("btnAnimPlay").disabled = true;
+        document.getElementById("btnAnimStop").disabled = false;
+        document.getElementById("btnAnimCapture").disabled = true;
+
+        anim._interval = setInterval(() => {
+            anim.currentFrame = (anim.currentFrame + 1) % anim.keyframes.length;
+            this.renderAnimPreview(anim.currentFrame);
+            this.updateAnimFrameIndicator();
+            // Highlight current row
+            const rows = document.querySelectorAll("#animKeyframeList > div");
+            rows.forEach((r, i) => {
+                r.style.background = i === anim.currentFrame ? "#e3f2fd" : "#f8f9fa";
+                r.style.borderColor = i === anim.currentFrame ? "#90caf9" : "#dee2e6";
+            });
+        }, 1000 / anim.fps);
+    },
+
+    animStop: function() {
+        const anim = MODEL.animation;
+        anim.playing = false;
+        if (anim._interval) { clearInterval(anim._interval); anim._interval = null; }
+        document.getElementById("btnAnimPlay").disabled = false;
+        document.getElementById("btnAnimStop").disabled = true;
+        document.getElementById("btnAnimCapture").disabled = false;
+        this.updateAnimFrameIndicator();
     },
 
     analyzeTileReuse: function() {
@@ -3053,7 +3721,8 @@ const UI = {
 
     renderSpritePreview: function(canvas, patternNum, colorIdx) {
         const ctx = canvas.getContext("2d");
-        const size = MODEL.sprites.size16x16 ? 16 : 8;
+        const is16x16 = MODEL.sprites.size16x16;
+        const size = is16x16 ? 16 : 8;
         const scale = 32 / size;
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, 32, 32);
@@ -3061,24 +3730,33 @@ const UI = {
         if (!MODEL.sprites.hasPatterns) return;
 
         const rgb = CONFIG.PALETTE[colorIdx] || {r:255,g:255,b:255};
-        const patternOffset = MODEL.sprites.size16x16 ? (patternNum & 0xFC) * 8 : patternNum * 8;
+        const sprPat = MODEL.sprites.patterns;
 
+        // For 16x16: TMS9918 uses (patternNum & 0xFC) * 8 as base
+        // For 8x8: patternNum * 8
+        const patternBase = is16x16 ? (patternNum & 0xFC) * 8 : patternNum * 8;
+
+        ctx.fillStyle = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
         for (let py = 0; py < size; py++) {
             for (let px = 0; px < size; px++) {
-                let byteIdx, bit;
-                if (MODEL.sprites.size16x16) {
-                    // 16x16: left 8 cols in first 16 bytes, right 8 in next 16
-                    const col8 = px < 8 ? 0 : 16;
-                    byteIdx = patternOffset + col8 + py;
-                    bit = 7 - (px % 8);
+                let byteOffset, bitPos;
+                if (is16x16) {
+                    // 16x16 layout: 4 quadrants (TL, BL, TR, BR)
+                    const quadX = px >= 8 ? 1 : 0;
+                    const quadY = py >= 8 ? 1 : 0;
+                    const localX = px % 8;
+                    const localY = py % 8;
+                    byteOffset = patternBase + (quadY * 8) + (quadX * 16) + localY;
+                    bitPos = 7 - localX;
                 } else {
-                    byteIdx = patternOffset + py;
-                    bit = 7 - px;
+                    // 8x8: straightforward
+                    byteOffset = patternBase + py;
+                    bitPos = 7 - px;
                 }
-                const pixel = (MODEL.sprites.patterns[byteIdx] >> bit) & 1;
-                if (pixel && colorIdx > 0) {
-                    ctx.fillStyle = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
-                    ctx.fillRect(px * scale, py * scale, scale, scale);
+                if (byteOffset < sprPat.length && (sprPat[byteOffset] >> bitPos) & 1) {
+                    if (colorIdx > 0) {
+                        ctx.fillRect(px * scale, py * scale, scale, scale);
+                    }
                 }
             }
         }

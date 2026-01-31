@@ -51,6 +51,14 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 - Sprite Editor with attribute table and pattern grid viewer
 - Export sprites as companion files (`.sprattr`, `.sprpat`)
 
+### Sprite Animation
+- **Keyframe-based timeline** – Capture sprite states as animation frames (128-byte snapshots, hardware-ready)
+- **Animation Mode** – Edit animations directly on canvas with frame navigation, save, and playback
+- **Record Mode** – Auto-capture frames on sprite drag for stop-motion workflow
+- **Onion Skin** – See previous frame as ghost overlay while positioning sprites
+- **Inline editing** – Change sprite pattern, color, and Early Clock from sidebar
+- **.cvproj support** – Save/load animations with full project state
+
 ### Advanced Features
 - **Drag & drop** - Simply drop image files onto the canvas
 - **Dithering engine** - Convert modern images to retro palettes with multiple dithering algorithms
@@ -59,7 +67,22 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 
 ## Changelog
 
-### January 27, 2026 – New Features
+### v1.1 – January 31, 2026 – Animation Update
+- **Sprite Animation Timeline** – Full keyframe-based animation system with capture, load, copy, delete, and playback controls in the Sprite Editor modal.
+- **Animation Mode** – New "Anim" button reveals a canvas-integrated toolbar with frame navigation (prev/next), save frame, new frame, delete frame, and play/stop controls.
+- **Record Mode** – Click Rec to auto-capture keyframes as you drag sprites; each mouse release creates a new frame for stop-motion style animation.
+- **Onion Skin** – Toggle ghost overlay showing previous frame's sprites at 35% opacity while editing current frame.
+- **Inline Sprite Properties** – When a single sprite is selected, edit Pattern #, Early Clock, and Color directly in the sidebar without opening the modal.
+- **Tile Reuse Analyzer** – New tool (Tools menu) scans the canvas and highlights duplicate tiles with color-coded overlays and per-third statistics.
+- **Pattern Editor Onion Skin** – Ghost overlay in the sprite pattern editor to compare with another pattern while drawing.
+- **.cvproj Animation Support** – Project files now save/load animation keyframes (backwards compatible).
+- **UX Improvements** – Unsaved changes indicator (●), undo/redo step counts, scroll button tooltips, improved sprite button tooltips.
+- **Circle/Oval from Center** – Ovals now expand from click point as center rather than corner.
+- **Reference Image Zoom** – Reference images now follow the zoom viewport correctly.
+- **9-slice Canvas Frame** – Pixel-perfect 512×384 display with proper rounded corner frame.
+- **Bug Fixes** – Sprite preview in 8x8 mode, pan direction, undo grouping for sprite operations, animation keyframe list display.
+
+### v1.0 – January 27, 2026 – Initial Release
 - **Drawing & navigation** – Added Tile Stamp (T), Fill Bucket (B), brush-size selector, fill/outline toggle, crosshair guide, mirror buttons, and spacebar panning for faster layout work.
 - **Palette utilities** – Remap Colors modal now supports canvas picking, swaps, and global recolors without repainting.
 - **Reference & projects** – File menu gains `.cvproj` snapshots (patterns, colors, sprites) plus translucent reference image loading with opacity slider and clear control.
@@ -90,7 +113,10 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 | Character Grid | 32 × 24 tiles (8×8 pixels each) |
 | Pattern Memory | 6,144 bytes |
 | Color Memory | 6,144 bytes |
-| Total Size | Single HTML file (~25KB) |
+| Sprite Attributes | 128 bytes (32 sprites × 4 bytes) |
+| Sprite Patterns | 2,048 bytes |
+| Animation Keyframes | Up to 120 frames (128 bytes each) |
+| Total Size | Single HTML file (~255KB) |
 
 ## Architecture
 
