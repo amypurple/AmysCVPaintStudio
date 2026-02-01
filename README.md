@@ -82,6 +82,12 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 - **9-slice Canvas Frame** – Pixel-perfect 512×384 display with proper rounded corner frame.
 - **Bug Fixes** – Sprite preview in 8x8 mode, pan direction, undo grouping for sprite operations, animation keyframe list display.
 
+### v1.1.1 – January 31, 2026
+- Replace blocking alerts with status bar messages
+- Add cancelAnimationFrame to dither preview slider
+- Add parseInt radix for safer parsing
+- Document animation record shortcut (Period key)
+
 ### v1.0 – January 27, 2026 – Initial Release
 - **Drawing & navigation** – Added Tile Stamp (T), Fill Bucket (B), brush-size selector, fill/outline toggle, crosshair guide, mirror buttons, and spacebar panning for faster layout work.
 - **Palette utilities** – Remap Colors modal now supports canvas picking, swaps, and global recolors without repainting.

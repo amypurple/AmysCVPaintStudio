@@ -274,7 +274,7 @@
                     <button class="btn btn-sm btn-outline-success py-0 px-1" id="animNewFrame" title="Copy &amp; append new frame" style="font-size:0.7rem">+ New</button>
                     <button class="btn btn-sm btn-outline-danger py-0 px-1" id="animDelFrame" title="Delete current frame" style="font-size:0.7rem">&#128465;</button>
                     <button class="btn btn-sm btn-outline-info py-0 px-1" id="animPlayBtn" title="Play/Stop" style="font-size:0.7rem">&#9654; Play</button>
-                    <button class="btn btn-sm btn-outline-danger py-0 px-1" id="animRecBtn" title="Record: drag sprites to capture frames" style="font-size:0.7rem">&#9679; Rec</button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" id="animRecBtn" title="Record: drag sprites to capture frames (Period key)" style="font-size:0.7rem">&#9679; Rec</button>
                     <button class="btn btn-sm btn-outline-secondary py-0 px-1" id="animOnionBtn" title="Onion skin" style="font-size:0.7rem">&#128123;</button>
                     <span class="ms-auto"></span>
                     <button class="btn btn-sm btn-outline-danger py-0 px-1" id="animExitBtn" title="Exit animation mode" style="font-size:0.7rem">&#10005; Exit</button>
@@ -496,6 +496,7 @@
             <tr><td class="text-muted py-0">Edit:</td><td class="py-0">Ctrl+Z/Y Undo/Redo, Ctrl+C/V/X Copy/Paste/Cut</td></tr>
             <tr><td class="text-muted py-0">Canvas:</td><td class="py-0">Alt+Click Picker, Space+Drag Pan/Scroll</td></tr>
             <tr><td class="text-muted py-0">Sprites:</td><td class="py-0">M Sprite Tool, Arrows Nudge (Shift=8px), Esc Deselect</td></tr>
+            <tr><td class="text-muted py-0">Animation:</td><td class="py-0">"." (Period) Toggle Record Mode</td></tr>
         </table>
 
         <div class="text-center mt-2 mb-0" style="font-size:0.75rem">
@@ -1602,8 +1603,8 @@ const IO = {
                 }
                 // Only render if binary load was successful
                 RENDERER.render(); 
-            } catch(err) { 
-                alert("Error loading file: " + err.message); 
+            } catch(err) {
+                UI.setStatus("ERROR: " + err.message); console.error(err);
             }
         };
 
@@ -1638,7 +1639,7 @@ const IO = {
                     }
                     UI.updateSpriteUI();
                     UI.setStatus("LOADED PROJECT" + (MODEL.animation.keyframes.length > 0 ? ` (${MODEL.animation.keyframes.length} anim frames)` : "")); HISTORY.push(); RENDERER.render();
-                } catch(err) { alert("Error loading project: " + err.message); }
+                } catch(err) { UI.setStatus("ERROR: " + err.message); console.error(err); }
             };
             tr.readAsText(file);
         }
@@ -2436,7 +2437,7 @@ const UI = {
 
         // Sprite Layer Selector
         document.getElementById("spriteLayerSelect").onchange = (e) => {
-            const idx = parseInt(e.target.value);
+            const idx = parseInt(e.target.value, 10);
             UI.selectSpriteLayer(idx);
             // Auto-switch to sprite tool when selecting a sprite
             if (idx >= 0) {
@@ -2598,9 +2599,9 @@ const UI = {
         setupPick("btnPickSrc", "remapSrc");
         setupPick("btnPickDst", "remapDst");
         document.getElementById("btnRemapApply").onclick = () => {
-            const src = parseInt(document.getElementById("remapSrc").dataset.selected);
-            const dst = parseInt(document.getElementById("remapDst").dataset.selected);
-            if(isNaN(src) || isNaN(dst) || src === dst) { alert("Select two different colors."); return; }
+            const src = parseInt(document.getElementById("remapSrc").dataset.selected, 10);
+            const dst = parseInt(document.getElementById("remapDst").dataset.selected, 10);
+            if(isNaN(src) || isNaN(dst) || src === dst) { UI.setStatus("Select two different colors"); return; }
             const swap = document.getElementById("remapSwap").checked;
             HISTORY.push();
             for(let i=0;i<6144;i++) {
@@ -2623,7 +2624,7 @@ const UI = {
             // Export sprite attribute table (128 bytes) and pattern table (2048 bytes)
             const hasSprites = MODEL.sprites.count > 0 || MODEL.sprites.hasPatterns;
             if (!hasSprites) {
-                alert("No sprite data to export. Load an SC2 file with sprites or initialize empty sprites first.");
+                UI.setStatus("No sprite data to export");
                 return;
             }
             IO.saveBlob(MODEL.sprites.attributes.slice(0, 128), "sprites.sprattr");
@@ -2649,9 +2650,9 @@ const UI = {
                         MODEL.sprites.hasPatterns = true;
                         UI.updateSpriteUI();
                         RENDERER.render();
-                        alert("Sprite patterns loaded: 2048 bytes");
+                        UI.setStatus("SPRITE PATTERNS LOADED (2048 bytes)");
                     } else {
-                        alert(`Invalid file size: ${data.length} bytes (expected 2048)`);
+                        UI.setStatus(`ERROR: Invalid file size ${data.length} bytes (expected 2048)`);
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -2682,9 +2683,9 @@ const UI = {
                         MODEL.sprites.enabled = count > 0;
                         UI.updateSpriteUI();
                         RENDERER.render();
-                        alert(`Sprite attributes loaded: ${count} sprites`);
+                        UI.setStatus(`SPRITE ATTRIBUTES LOADED (${count} sprites)`);
                     } else {
-                        alert(`Invalid file size: ${data.length} bytes (expected 128)`);
+                        UI.setStatus(`ERROR: Invalid file size ${data.length} bytes (expected 128)`);
                     }
                 };
                 reader.readAsArrayBuffer(file);
@@ -2739,7 +2740,7 @@ const UI = {
         document.getElementById("btnAnimPlay").onclick = () => UI.animPlay();
         document.getElementById("btnAnimStop").onclick = () => UI.animStop();
         document.getElementById("animFps").onchange = (e) => {
-            MODEL.animation.fps = Math.max(1, Math.min(60, parseInt(e.target.value) || 10));
+            MODEL.animation.fps = Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 10));
             if (MODEL.animation.playing) { UI.animStop(); UI.animPlay(); }
         };
 
@@ -2838,7 +2839,7 @@ const UI = {
 
     updateSpriteLayerSelect: function() {
         const select = document.getElementById("spriteLayerSelect");
-        const currentValue = parseInt(select.value);
+        const currentValue = parseInt(select.value, 10);
         select.innerHTML = '<option value="-1">None</option>';
 
         // Add visible sprites to dropdown
@@ -2970,7 +2971,7 @@ const UI = {
                 if (STATE.selectedSprites.length !== 1) return;
                 const si = STATE.selectedSprites[0];
                 const old = MODEL.sprites.attributes[si * 4 + 3];
-                MODEL.sprites.attributes[si * 4 + 3] = (old & 0xF0) | (parseInt(this.dataset.color));
+                MODEL.sprites.attributes[si * 4 + 3] = (old & 0xF0) | (parseInt(this.dataset.color, 10));
                 HISTORY.push();
                 UI.updateInlineSpriteProps();
                 RENDERER.render();
@@ -2983,7 +2984,7 @@ const UI = {
         document.getElementById("inlineSprPat").addEventListener("change", function() {
             if (STATE.selectedSprites.length !== 1) return;
             const idx = STATE.selectedSprites[0];
-            MODEL.sprites.attributes[idx * 4 + 2] = Math.max(0, Math.min(255, parseInt(this.value) || 0));
+            MODEL.sprites.attributes[idx * 4 + 2] = Math.max(0, Math.min(255, parseInt(this.value, 10) || 0));
             HISTORY.push();
             RENDERER.render();
         });
@@ -3271,17 +3272,17 @@ const UI = {
 
         // Event listeners
         list.querySelectorAll("[data-anim-load]").forEach(btn => {
-            btn.onclick = () => this.loadKeyframe(parseInt(btn.dataset.animLoad));
+            btn.onclick = () => this.loadKeyframe(parseInt(btn.dataset.animLoad, 10));
         });
         list.querySelectorAll("[data-anim-copy]").forEach(btn => {
-            btn.onclick = () => this.copyKeyframe(parseInt(btn.dataset.animCopy));
+            btn.onclick = () => this.copyKeyframe(parseInt(btn.dataset.animCopy, 10));
         });
         list.querySelectorAll("[data-anim-del]").forEach(btn => {
-            btn.onclick = () => this.deleteKeyframe(parseInt(btn.dataset.animDel));
+            btn.onclick = () => this.deleteKeyframe(parseInt(btn.dataset.animDel, 10));
         });
         list.querySelectorAll("[data-anim-idx]").forEach(inp => {
             inp.onchange = () => {
-                MODEL.animation.keyframes[parseInt(inp.dataset.animIdx)].name = inp.value;
+                MODEL.animation.keyframes[parseInt(inp.dataset.animIdx, 10)].name = inp.value;
             };
         });
 
@@ -3434,7 +3435,7 @@ const UI = {
         const anim = MODEL.animation;
         if (anim.keyframes.length < 2) { UI.setStatus("Need at least 2 keyframes to play"); return; }
         anim.playing = true;
-        anim.fps = Math.max(1, Math.min(60, parseInt(document.getElementById("animFps").value) || 10));
+        anim.fps = Math.max(1, Math.min(60, parseInt(document.getElementById("animFps").value, 10) || 10));
         if (anim.currentFrame < 0) anim.currentFrame = 0;
         document.getElementById("btnAnimPlay").disabled = true;
         document.getElementById("btnAnimStop").disabled = false;
@@ -3770,7 +3771,7 @@ const UI = {
             input.onchange = (e) => {
                 self.updateSpriteAttr(e.target);
                 // Update preview
-                const idx = parseInt(e.target.dataset.idx);
+                const idx = parseInt(e.target.dataset.idx, 10);
                 const card = e.target.closest(".card");
                 const canvas = card.querySelector(".spr-preview");
                 const pat = MODEL.sprites.attributes[idx * 4 + 2];
@@ -3787,8 +3788,8 @@ const UI = {
         // Color palette clicks
         container.querySelectorAll(".spr-color-pick").forEach(swatch => {
             swatch.onclick = (e) => {
-                const idx = parseInt(swatch.dataset.idx);
-                const newColor = parseInt(swatch.dataset.color);
+                const idx = parseInt(swatch.dataset.idx, 10);
+                const newColor = parseInt(swatch.dataset.color, 10);
                 const ec = MODEL.sprites.attributes[idx * 4 + 3] & 0x80;
                 MODEL.sprites.attributes[idx * 4 + 3] = ec | newColor;
 
@@ -3814,7 +3815,7 @@ const UI = {
         // Delete buttons
         container.querySelectorAll(".spr-delete").forEach(btn => {
             btn.onclick = () => {
-                const idx = parseInt(btn.dataset.idx);
+                const idx = parseInt(btn.dataset.idx, 10);
                 MODEL.sprites.attributes[idx * 4] = 208;
                 self.refreshSpriteTable();
                 RENDERER.render();
@@ -3826,7 +3827,7 @@ const UI = {
         container.querySelectorAll(".card").forEach(card => {
             card.ondragstart = (e) => {
                 e.stopPropagation();
-                draggedIdx = parseInt(card.dataset.idx);
+                draggedIdx = parseInt(card.dataset.idx, 10);
                 card.style.opacity = "0.5";
                 e.dataTransfer.effectAllowed = "move";
                 e.dataTransfer.setData("text/plain", "sprite");
@@ -3844,7 +3845,7 @@ const UI = {
                 e.preventDefault();
                 e.stopPropagation();
                 card.classList.remove("border-primary");
-                const targetIdx = parseInt(card.dataset.idx);
+                const targetIdx = parseInt(card.dataset.idx, 10);
                 if (draggedIdx !== null && draggedIdx !== targetIdx) {
                     self.moveSpriteToIndex(draggedIdx, targetIdx);
                     self.refreshSpriteTable();
@@ -3867,22 +3868,22 @@ const UI = {
                 return;
             }
         }
-        alert("Maximum 32 sprites reached!");
+        UI.setStatus("MAXIMUM 32 SPRITES REACHED");
     },
 
     updateSpriteAttr: function(el) {
-        const idx = parseInt(el.dataset.idx);
+        const idx = parseInt(el.dataset.idx, 10);
         const offset = idx * 4;
         const sprAttr = MODEL.sprites.attributes;
 
         if (el.classList.contains("spr-y")) {
-            sprAttr[offset] = Math.max(0, Math.min(255, parseInt(el.value) || 0));
+            sprAttr[offset] = Math.max(0, Math.min(255, parseInt(el.value, 10) || 0));
         } else if (el.classList.contains("spr-x")) {
-            sprAttr[offset + 1] = Math.max(0, Math.min(255, parseInt(el.value) || 0));
+            sprAttr[offset + 1] = Math.max(0, Math.min(255, parseInt(el.value, 10) || 0));
         } else if (el.classList.contains("spr-pat")) {
-            sprAttr[offset + 2] = Math.max(0, Math.min(255, parseInt(el.value) || 0));
+            sprAttr[offset + 2] = Math.max(0, Math.min(255, parseInt(el.value, 10) || 0));
         } else if (el.classList.contains("spr-color")) {
-            const color = parseInt(el.value) || 0;
+            const color = parseInt(el.value, 10) || 0;
             const ec = sprAttr[offset + 3] & 0x80;
             sprAttr[offset + 3] = ec | (color & 0x0F);
         } else if (el.classList.contains("spr-ec")) {
@@ -4070,7 +4071,7 @@ const UI = {
         const ctx = canvas.getContext("2d");
         const sprPat = MODEL.sprites.patterns;
         const palette = CONFIG.PALETTE;
-        const colorIndex = parseInt(document.getElementById("patternGridColor").value) || 15;
+        const colorIndex = parseInt(document.getElementById("patternGridColor").value, 10) || 15;
         const rgb = palette[colorIndex] || {r:255,g:255,b:255};
         const is16x16 = MODEL.sprites.size16x16;
 
@@ -4232,7 +4233,7 @@ const UI = {
         // Pattern selector
         document.getElementById("patEditSelect").onchange = (e) => {
             const max = MODEL.sprites.size16x16 ? 63 : 255;
-            self.patternEditState.currentPattern = Math.max(0, Math.min(max, parseInt(e.target.value) || 0));
+            self.patternEditState.currentPattern = Math.max(0, Math.min(max, parseInt(e.target.value, 10) || 0));
             self.renderPatternEditor();
         };
         document.getElementById("patEditColor").onchange = () => self.renderPatternEditor();
@@ -4283,7 +4284,7 @@ const UI = {
             self.renderPatternEditor();
         };
         onionPat.onchange = () => {
-            self.patternEditState.onionPattern = Math.max(0, parseInt(onionPat.value) || 0);
+            self.patternEditState.onionPattern = Math.max(0, parseInt(onionPat.value, 10) || 0);
             self.renderPatternEditor();
         };
         onionOp.oninput = () => {
@@ -4307,7 +4308,7 @@ const UI = {
         const patNum = this.patternEditState.currentPattern;
         const sprPat = MODEL.sprites.patterns;
         const palette = CONFIG.PALETTE;
-        const colorIndex = parseInt(document.getElementById("patEditColor")?.value) || 15;
+        const colorIndex = parseInt(document.getElementById("patEditColor")?.value, 10) || 15;
         const rgb = palette[colorIndex] || {r:255,g:255,b:255};
         const is16x16 = MODEL.sprites.size16x16;
         const patternSize = is16x16 ? 16 : 8;
@@ -4695,7 +4696,7 @@ CONFIG.PALETTE.forEach((c, i) => {
 
 function getActiveDitherPalette() {
     const active = [];
-    paletteCheckboxes.forEach(cb => { if(cb.checked) { const i=parseInt(cb.dataset.index); active.push({...CONFIG.PALETTE[i], index: i}); } });
+    paletteCheckboxes.forEach(cb => { if(cb.checked) { const i=parseInt(cb.dataset.index, 10); active.push({...CONFIG.PALETTE[i], index: i}); } });
     if(active.length < 2) for(let i=1; i<=15; i++) active.push({...CONFIG.PALETTE[i], index: i});
     return active;
 }
@@ -4735,9 +4736,9 @@ function buildToned() {
     const brightSlider = document.getElementById("brightSlider");
     const contrastSlider = document.getElementById("contrastSlider");
 
-    const gamma = parseInt(gammaSlider.value)/100.0;
-    const brightFactor = (parseInt(brightSlider.value)-100)*255/100;
-    const contrast = parseInt(contrastSlider.value)/100.0;
+    const gamma = parseInt(gammaSlider.value, 10)/100.0;
+    const brightFactor = (parseInt(brightSlider.value, 10)-100)*255/100;
+    const contrast = parseInt(contrastSlider.value, 10)/100.0;
 
     const table = new Uint8Array(256);
     for(let i=0; i<256; i++) {
@@ -5000,7 +5001,7 @@ function runDitherPipeline() {
     document.getElementById("brightLabel").textContent = brightSlider.value;
     document.getElementById("contrastLabel").textContent = contrastSlider.value;
     document.getElementById("gammaLabel").textContent = gammaSlider.value;
-    document.getElementById("thresholdLabel").textContent = (parseInt(thresholdSlider.value) / 100).toFixed(2);
+    document.getElementById("thresholdLabel").textContent = (parseInt(thresholdSlider.value, 10) / 100).toFixed(2);
 
     const toned = buildToned();
     const activePal = getActiveDitherPalette();
@@ -5011,27 +5012,27 @@ function runDitherPipeline() {
     if (ditherMode === "tile8x8") {
         // ZX Spectrum style: 2 colors per 8x8 tile
         if (ditherMethod === "error-diffusion") {
-            const err = parseInt(diffSlider.value) / 100;
+            const err = parseInt(diffSlider.value, 10) / 100;
             res = ditherTile8x8(toned, 256, 192, activePal, err);
         } else {
             let matrixName;
             if (ditherMethod === "ordered-2x2") matrixName = "bayer2x2";
             else if (ditherMethod === "ordered-4x4") matrixName = "bayer4x4";
             else if (ditherMethod === "ordered-8x8") matrixName = "bayer8x8";
-            const threshold = parseInt(thresholdSlider.value) / 100;
+            const threshold = parseInt(thresholdSlider.value, 10) / 100;
             res = ditherTile8x8Ordered(toned, 256, 192, activePal, matrixName, threshold);
         }
     } else {
         // ColecoVision style: 2 colors per 8x1 line
         if (ditherMethod === "error-diffusion") {
-            const err = parseInt(diffSlider.value) / 100;
+            const err = parseInt(diffSlider.value, 10) / 100;
             res = ditherRow8x1(toned, 256, 192, activePal, err);
         } else {
             let matrixName;
             if (ditherMethod === "ordered-2x2") matrixName = "bayer2x2";
             else if (ditherMethod === "ordered-4x4") matrixName = "bayer4x4";
             else if (ditherMethod === "ordered-8x8") matrixName = "bayer8x8";
-            const threshold = parseInt(thresholdSlider.value) / 100;
+            const threshold = parseInt(thresholdSlider.value, 10) / 100;
             res = ditherRow8x1Ordered(toned, 256, 192, activePal, matrixName, threshold);
         }
     }
@@ -5200,11 +5201,10 @@ function showScrModal(data, formatName) {
     };
 
     const schedule = () => {
-        let pendingChoice = scrPaletteSlider.value;
-        if (raf) return;
+        if (raf) cancelAnimationFrame(raf);
         raf = requestAnimationFrame(() => {
             raf = 0;
-            renderPreview(pendingChoice);
+            renderPreview(scrPaletteSlider.value);
         });
     };
 
@@ -5265,8 +5265,8 @@ function importDitheredImage() {
             }
             const sorted=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
             let fg=15, bg=1;
-            if(sorted.length>0) fg=parseInt(sorted[0]);
-            if(sorted.length>1) bg=parseInt(sorted[1]); else bg=fg;
+            if(sorted.length>0) fg=parseInt(sorted[0], 10);
+            if(sorted.length>1) bg=parseInt(sorted[1], 10); else bg=fg;
             let pat=0; for(let k=0; k<8; k++) if(rowIdxs[k]===fg) pat|=(1<<(7-k));
             const addr = (Math.floor(y/8)*256)+(tx*8)+(y%8);
             MODEL.pattern[addr]=pat; MODEL.color[addr]=(fg<<4)|bg;
