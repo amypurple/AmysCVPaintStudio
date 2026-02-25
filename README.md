@@ -1,156 +1,219 @@
 # Amy's CV Paint Studio
 
-A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics system, built entirely as a single HTML file with no external dependencies.
+A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics system (TMS9918A), built entirely as a single HTML file with no build steps required.
 
-## Overview
+## Versions
 
-**Amy's CV Paint Studio** is a fully-featured paint application that recreates the nostalgic 8-bit graphics experience of the ColecoVision era. Despite being a single [index.html](index.html) file, it packs impressive functionality for creating authentic retro artwork with period-accurate color palettes and resolution.
+| Version | Status | Description |
+|---------|--------|-------------|
+| [v1.5.0](v1.5/index.html) | Experimental | Font & Code Update — Text tool, code export, compactor, stamps |
+| [v1.1.1](v1.1/index.html) | Stable | Animation Update — proven, production-ready |
+
+Open [index.html](index.html) for the version selector landing page.
+
+---
 
 ## Features
 
 ### Drawing Tools
-- **Pen** - Freehand pixel-by-pixel drawing (Hotkey: P)
-- **Eraser** - Remove pixels with precision (Hotkey: E)
-- **Rectangle** - Draw filled rectangles (Hotkey: R)
-- **Grid Rectangle** - Character-aligned rectangle tool (Hotkey: G)
-- **Circle/Oval** - Create circular and elliptical shapes (Hotkey: O)
-- **Line** - Draw straight lines (Hotkey: L)
-- **Select** - Area selection tool for copy/paste operations (Hotkey: S)
+- **Pen** — Freehand pixel-by-pixel drawing with smart FG/BG color logic (P)
+- **Eraser** — Remove pixels with precision (E)
+- **Rectangle** — Filled or outline rectangles (R)
+- **Grid Rectangle** — Character-aligned rectangle (G)
+- **Circle/Oval** — Circular and elliptical shapes, drawn from center (O)
+- **Line** — Straight lines with brush-size support (L)
+- **Select** — Area selection for copy/paste/stamp operations (S)
+- **Fill Bucket** — Flood fill by tile row color (B)
+- **Tile Stamp** — Capture and place single or multi-tile stamps (K)
+- **Text** *(v1.5+)* — Type ColecoVision ROM font glyphs onto the canvas (T)
+- **Sprite Select** — Click and nudge sprites on canvas (M, visible when sprites loaded)
 
 ### Canvas Features
-- **256×192 resolution** - Authentic ColecoVision display dimensions
-- **16-color palette** - Period-accurate color selection with foreground/background support
-- **Undo/Redo** - Full history management (Ctrl+Z / Ctrl+Y)
-- **Grid overlay** - Toggle 8×8 character grid for precise alignment (Hotkey: X)
-- **Zoom mode** - 2× magnification for detailed work (Hotkey: Z)
-- **Canvas scrolling** - Scroll in four directions
+- **256×192 resolution** — Authentic ColecoVision/TMS9918A display dimensions
+- **16-color palette** — Period-accurate TMS9918A colors; FG + BG per 8×1 tile row
+- **Undo/Redo** — Full history (Ctrl+Z / Ctrl+Y)
+- **Grid overlay** — Toggle 8×8 character grid (X)
+- **Zoom mode** — 2× magnification with persistence (Z)
+- **Crosshair guide** — Canvas alignment aid (H)
+- **Mirror drawing** — Horizontal and vertical symmetry (Shift+H / Shift+V)
+- **Pan** — Space+drag to scroll canvas
+- **Color picker** — Sample colors from canvas (Alt+click)
+- **Reference image** — Load translucent overlay with opacity slider
+- **Tile Usage Heatmap** *(v1.3+)* — Color-coded duplicate tile overlay
+- **3-tier collision overlay** *(v1.5+)* — Yellow/orange/red sprite collision visualization
 
 ### File Support
 
-**Import Formats:**
-- Native `.pc` (pattern+color combined)
-- `.pattern` and `.color` (separate pattern/color data)
-- `.grp` files
-- `.sc2` - MSX Screen 2 format (with sprite support)
-- `.pp` files (10k and 40k variants)
-- ZX Spectrum formats (`.scr`, `.mlt`, `.mc`, `.img`, `.gig`)
-- Standard image formats (PNG, JPG, GIF, BMP, WebP) with dithering
+**Import:**
+- `.pc` (pattern+color combined), `.pattern`, `.color`, `.grp`
+- `.sc2` MSX Screen 2 (with sprite support)
+- `.pp` (10k and 40k variants)
+- ZX Spectrum: `.scr`, `.mlt`, `.mc`, `.img`, `.gig`
+- `.fcv` ColecoVision font file *(v1.5+)*
+- `.cvstamp` multi-tile stamp *(v1.4+)*
+- `.cvproj` full project snapshot
+- PNG, JPG, GIF, BMP, WebP — with dithering engine
+- Sprite sheet import (PNG/JPG → sprite patterns) *(v1.5+)*
 
-**Export Formats:**
-- `.pc` - Complete canvas data
-- `.pattern` - Pattern data only
-- `.color` - Color data only
-- `.grp` - Graphics format
-- `.sc2` - MSX Screen 2 (standard or with sprites)
-- `.pp` - Picture format (10k/40k)
-- `.png` - Modern image export
+**Export:**
+- `.pc`, `.pattern`, `.color`, `.grp`, `.sc2`, `.pp`, `.png`
+- `.fcv` ColecoVision font file *(v1.5+)*
+- `.cvstamp` multi-tile stamp *(v1.4+)*
+- `.cvproj` project snapshot
+- Code export: CVBasic, C Header (SDCC), SJASMplus, WLA-DX, TNIASM *(v1.5+)*
 
-### MSX SC2 Sprite Support
-- Load and display sprites from SC2 files
-- Toggle sprite layer visibility
-- Sprite Editor with attribute table and pattern grid viewer
-- Export sprites as companion files (`.sprattr`, `.sprpat`)
+### Sprite System
+- Up to 32 sprites with 4-byte attribute table (X, Y, pattern, color+EC)
+- 8×8 and 16×16 sprite sizes with undo for size toggle
+- Sprite Editor modal: attribute table, pattern grid, pixel-level pattern editor
+- Sprite import/export: `.sprpat`, `.sprattr`
+- Multi-select, drag, nudge (Arrow keys / Shift for 8px jumps)
+- Sprite sheet import to pattern table
 
 ### Sprite Animation
-- **Keyframe-based timeline** – Capture sprite states as animation frames (128-byte snapshots, hardware-ready)
-- **Animation Mode** – Edit animations directly on canvas with frame navigation, save, and playback
-- **Record Mode** – Auto-capture frames on sprite drag for stop-motion workflow
-- **Onion Skin** – See previous frame as ghost overlay while positioning sprites
-- **Inline editing** – Change sprite pattern, color, and Early Clock from sidebar
-- **.cvproj support** – Save/load animations with full project state
+- **Keyframe timeline** — Capture/load/copy/delete frames (128-byte hardware snapshots)
+- **Animation Mode** — Frame navigation, save, new, delete, play/stop directly on canvas
+- **Record Mode** — Auto-capture on sprite drag for stop-motion workflow (`.` key)
+- **Onion Skin** — Ghost overlay of previous frame at 35% opacity
+- **`.cvproj`** — Saves/loads animation keyframes (backwards compatible)
 
-### Advanced Features
-- **Drag & drop** - Simply drop image files onto the canvas
-- **Dithering engine** - Convert modern images to retro palettes with multiple dithering algorithms
-- **Color picker** - Sample colors directly from the canvas (Hotkey: I)
-- **Clipboard support** - Cut, copy, and paste selections (Ctrl+X, Ctrl+C, Ctrl+V)
+### Text Tool *(v1.5+)*
+- Full ColecoVision ROM font embedded (all 122 glyphs, $05–$7F)
+- Click to anchor, type to insert at caret position
+- Arrow keys navigate within text; Ctrl+Arrow moves the entire block by tile
+- Enter splits line at caret; Backspace deletes (merges lines at column 0)
+- Escape or tool switch commits text to tile data (Ctrl+Z to revert)
+- Three alignment modes: Left / Center / Right
+- **Solid BG** mode: glyph written with selected FG + BG colors
+- **Transparent BG** mode (default): FG pixels only; non-glyph positions sample dominant existing tile color to preserve image underneath
+- Special Characters picker ($05–$1F graphic glyphs)
+
+---
 
 ## Changelog
 
-### v1.1 – January 31, 2026 – Animation Update
-- **Sprite Animation Timeline** – Full keyframe-based animation system with capture, load, copy, delete, and playback controls in the Sprite Editor modal.
-- **Animation Mode** – New "Anim" button reveals a canvas-integrated toolbar with frame navigation (prev/next), save frame, new frame, delete frame, and play/stop controls.
-- **Record Mode** – Click Rec to auto-capture keyframes as you drag sprites; each mouse release creates a new frame for stop-motion style animation.
-- **Onion Skin** – Toggle ghost overlay showing previous frame's sprites at 35% opacity while editing current frame.
-- **Inline Sprite Properties** – When a single sprite is selected, edit Pattern #, Early Clock, and Color directly in the sidebar without opening the modal.
-- **Tile Reuse Analyzer** – New tool (Tools menu) scans the canvas and highlights duplicate tiles with color-coded overlays and per-third statistics.
-- **Pattern Editor Onion Skin** – Ghost overlay in the sprite pattern editor to compare with another pattern while drawing.
-- **.cvproj Animation Support** – Project files now save/load animation keyframes (backwards compatible).
-- **UX Improvements** – Unsaved changes indicator (●), undo/redo step counts, scroll button tooltips, improved sprite button tooltips.
-- **Circle/Oval from Center** – Ovals now expand from click point as center rather than corner.
-- **Reference Image Zoom** – Reference images now follow the zoom viewport correctly.
-- **9-slice Canvas Frame** – Pixel-perfect 512×384 display with proper rounded corner frame.
-- **Bug Fixes** – Sprite preview in 8x8 mode, pan direction, undo grouping for sprite operations, animation keyframe list display.
+### v1.5.0 — 2026-02-24 *(experimental)*
+- **Text tool** (T): type ColecoVision ROM font glyphs directly onto the canvas; full caret navigation, multi-line, alignment, solid/transparent BG modes, special character picker
+- **FCV font import/export** (Font menu): reads/writes ICVGM-format `.fcv` files; 40 standard char slots ($21–$2A, $30–$39, $40–$49, $4A–$53)
+- **Multi-dialect code export** (was "Export CVBasic"): CVBasic, C Header (SDCC), SJASMplus, WLA-DX, TNIASM; Full Screen and Selection scopes; download extension auto-updates
+- **Sprite sheet import** (Sprites → Import Sprite Sheet…): load PNG/JPG, pick tile size (8×8 or 16×16) and start pattern index; grid overlay preview
+- **3-tier collision visualization**: yellow (2 sprites overlap pixel), orange (3+), red (5+ sprites on scanline = hardware dropout); transparent sprites correctly counted toward scanline limit
+- **Dithering progress indicator**: status bar shows "COMPUTING DITHER…" / "CONVERTING…" during import
+- **Zoom persistence**: zoom state saved to localStorage and restored on reload
+- **Sprite size undo**: Ctrl+Z reverts 8×8 ↔ 16×16 toggle
+- Navbar reorganised: Stamp and Font promoted to their own top-level menus
+- Toolbar restructured: tool buttons in two balanced rows; sprite tool relocated to dedicated Sprite controls row shown only when sprites are loaded
+- Redundant inline keyboard cheatsheet removed (About modal is now the single reference)
 
-### v1.1.1 – January 31, 2026
-- Replace blocking alerts with status bar messages
-- Add cancelAnimationFrame to dither preview slider
-- Add parseInt radix for safer parsing
-- Document animation record shortcut (Period key)
+### v1.4.0 — 2026-02-24
+- **`.cvstamp` export**: save current selection as binary + JSON multi-tile stamp file
+- **`.cvstamp` import**: load stamp → activate multi-tile stamp tool with preview under cursor (zoom-aware)
+- **Stamp Refinement modal**: toggle individual tiles transparent before placing
+- **Auto-stamp from selection**: pressing K while a selection is active builds a stamp without exporting
+- Stamp tool rebound from T → K (T reserved for Text tool)
+- **Bug fix**: select tool — clicking without dragging no longer clears active selection; Escape clears it
+- **Bug fix**: drag-and-drop file import no longer triggers a drawing action after the file loads
 
-### v1.0 – January 27, 2026 – Initial Release
-- **Drawing & navigation** – Added Tile Stamp (T), Fill Bucket (B), brush-size selector, fill/outline toggle, crosshair guide, mirror buttons, and spacebar panning for faster layout work.
-- **Palette utilities** – Remap Colors modal now supports canvas picking, swaps, and global recolors without repainting.
-- **Reference & projects** – File menu gains `.cvproj` snapshots (patterns, colors, sprites) plus translucent reference image loading with opacity slider and clear control.
-- **Sprite workflow** – Sprites menu handles `.sprpat/.sprattr` import/export, initialization, clearing, and exposes on-canvas sprite tools (multi-select, drag/nudge, collision overlay, layer dropdown, size toggle).
-- **Sprite editor overhaul** – Card-based UI with Add Sprite, Sort by Y, Early Clock toggles, inline previews, drag-to-reorder, and new Pattern Grid + Pattern Editor tabs (draw/invert/flip/rotate).
-- **SC2 export upgrade** – Saving `.sc2` now auto-detects when to embed sprite patterns, removing the separate “+ sprites” command.
+### v1.3.0 — 2026-02-21
+- **Tileset Compactor** (Tools → Compactor…): deduplicate and merge similar tiles
+  - Pattern tolerance (0–100%) → Hamming distance over 64 bits
+  - Color tolerance (0–100%) → fg/bg mismatch penalty per row
+  - Greedy cluster preview: green = canonical tile, pink = merged-away
+  - Apply rewrites MODEL, pushes undo, re-renders canvas
+- **Tile Usage Heatmap** (Tools → Heatmap): color-coded duplicate tile overlay
+  - Red = unique tile, yellow = ×2–4, lime = ×5–15, green = ×16+
+  - Usage count badge per tile; works in normal and zoom view
+
+### v1.2.0 — 2026-02-21
+- **CVBasic export** (Tools → Export CVBasic…): matching TMSColor output format
+  - Full Screen: `MODE 1` + `DEFINE VRAM` (matches TMSColor `-b` output)
+  - Selection: `MODE 0` + `DEFINE CHAR` + `SCREEN` name table (matches TMSColor `-t`)
+  - Export-time exact deduplication: identical tiles share one char slot
+  - Reserved chars $00 and $20 always skipped
+  - `DATA BYTE` blocks in `$XX` hex format, 8 bytes per line, tab-indented
+
+### v1.1.1 — 2026-01-31
+- Replace all blocking `alert()` calls with `UI.setStatus()` status bar messages
+- Add `cancelAnimationFrame` to dither preview slider to prevent stale renders
+- Add explicit `parseInt(x, 10)` radix to all bare `parseInt()` calls
+- Document animation record shortcut (Period key) in About modal
+
+### v1.1.0 — 2026-01-31 — Animation Update
+- **Sprite Animation Timeline** — Keyframe system with capture, load, copy, delete, playback
+- **Animation Mode** — Canvas-integrated toolbar with frame navigation, record, play/stop
+- **Record Mode** — Auto-capture keyframes on sprite drag for stop-motion animation
+- **Onion Skin** — Ghost overlay of previous frame at 35% opacity
+- **Inline Sprite Properties** — Edit pattern, Early Clock, color from sidebar
+- **Tile Reuse Analyzer** — Highlights duplicate tiles with color-coded overlays
+- **Pattern Editor Onion Skin** — Compare patterns while drawing
+- **`.cvproj` Animation Support** — Project files save/load animation keyframes
+- Circle/Oval now expands from click point as center
+- Reference images follow the zoom viewport correctly
+- 9-slice canvas frame with pixel-perfect rounded corners
+
+### v1.0.0 — 2026-01-27 — Initial Release
+- Drawing tools: Pen, Eraser, Rectangle, Grid Rectangle, Circle, Line, Select, Fill Bucket, Tile Stamp
+- Brush-size selector, fill/outline toggle, crosshair guide, mirror buttons, spacebar panning
+- Palette utilities with Remap Colors modal (canvas picking, swaps, global recolor)
+- `.cvproj` project snapshots; reference image overlay with opacity slider
+- Sprite workflow: `.sprpat`/`.sprattr` import/export, multi-select, drag/nudge, collision overlay
+- Sprite Editor: card-based UI, Add/Sort, Pattern Grid + Pattern Editor tabs (draw/invert/flip/rotate)
+- SC2 export auto-detects sprite data for embedding
+
+---
 
 ## Getting Started
 
-1. Open [index.html](index.html) in any modern web browser
-2. Select a foreground and background color from the palette
-3. Choose a drawing tool
-4. Start creating retro pixel art!
+1. Open [index.html](index.html) in any modern browser — choose v1.1 (stable) or v1.5 (experimental)
+2. Select foreground and background colors from the palette
+3. Pick a drawing tool and start creating retro pixel art
 
-### Quick Tips
-- **Left-click** draws with the foreground color
-- **Right-click** draws with the background color
-- Use keyboard shortcuts for faster workflow
-- Toggle the grid (X) to align artwork to 8×8 character boundaries
-- Import existing images and let the dithering engine convert them to retro style
+### Keyboard Shortcuts (v1.5)
+
+| Keys | Action |
+|------|--------|
+| P / E / S / B / T | Pen / Eraser / Select / Fill / Text |
+| R / G / O / L / K | Rect / GridRect / Circle / Line / Stamp |
+| M | Sprite Select (when sprites loaded) |
+| Z / X | Zoom / Grid toggle |
+| F / H | Fill-Outline / Crosshair toggle |
+| Shift+H / Shift+V | Mirror Horizontal / Vertical |
+| Ctrl+Z / Ctrl+Y | Undo / Redo |
+| Ctrl+C / V / X | Copy / Paste / Cut |
+| Alt+click | Color picker |
+| Space+drag | Pan canvas |
+| `.` (period) | Toggle animation Record Mode |
+| **Text tool active** | |
+| Arrow keys | Move text caret |
+| Ctrl+Arrow | Move text block by 1 tile |
+| Enter / Backspace | New line / Delete at caret |
+| Escape | Commit text to canvas |
+
+---
 
 ## Technical Specifications
 
 | Property | Value |
 |----------|-------|
 | Canvas Resolution | 256 × 192 pixels |
-| Color Depth | 16 colors (4-bit) |
+| Color Depth | 16 colors (TMS9918A palette) |
 | Character Grid | 32 × 24 tiles (8×8 pixels each) |
 | Pattern Memory | 6,144 bytes |
 | Color Memory | 6,144 bytes |
 | Sprite Attributes | 128 bytes (32 sprites × 4 bytes) |
 | Sprite Patterns | 2,048 bytes |
 | Animation Keyframes | Up to 120 frames (128 bytes each) |
-| Total Size | Single HTML file (~255KB) |
-
-## Architecture
-
-This application implements a complete retro graphics system using:
-- **Canvas API** for rendering
-- **Pattern/Color separation** - Authentic ColecoVision memory model
-- **Character-based rendering** - 8×8 pixel tile system
-- **Binary format support** - Read/write vintage file formats
-- **No external dependencies** - Pure HTML/CSS/JavaScript
+| Distribution | Single HTML file, no build steps |
 
 ## Browser Compatibility
 
-Works in all modern browsers supporting HTML5 Canvas and ES6:
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-
-## Use Cases
-
-- Create authentic 8-bit game sprites and backgrounds
-- Design retro art with period-accurate limitations
-- Convert modern images to ColecoVision-compatible graphics
-- Export artwork for use in homebrew game development
-- Learn about vintage graphics architecture
+Chrome/Edge 90+ · Firefox 88+ · Safari 14+
 
 ## Credits
 
-**Amy's CV Paint Studio** by Amy Purple - A tribute to the golden age of 8-bit gaming.
+**Amy's CV Paint Studio** by Amy Purple — a tribute to the golden age of 8-bit gaming.
+Based on original Visual Basic tools by Daniel Bienvenu (NewColeco):
+*Coleco Paint* v1.7.1 (July 2003) · *CV Dithering* (Nov 2005)
 
 ---
 
