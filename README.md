@@ -6,8 +6,9 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 
 | Version | Status | Description |
 |---------|--------|-------------|
-| [v1.5.0](v1.5/index.html) | Experimental | Font & Code Update — Text tool, code export, compactor, stamps |
-| [v1.1.1](v1.1/index.html) | Stable | Animation Update — proven, production-ready |
+| [v1.6.1](v1.6/index.html) | **Latest** | Touch & ICVGM Update — touch/stylus, two-finger pan, .dat import/export |
+| [v1.5.0](v1.5/index.html) | Previous | Font & Code Update — Text tool, code export, compactor, stamps |
+| [v1.1.1](v1.1/index.html) | Legacy | Animation Update — proven, production-ready |
 
 Open [index.html](index.html) for the version selector landing page.
 
@@ -36,7 +37,8 @@ Open [index.html](index.html) for the version selector landing page.
 - **Zoom mode** — 2× magnification with persistence (Z)
 - **Crosshair guide** — Canvas alignment aid (H)
 - **Mirror drawing** — Horizontal and vertical symmetry (Shift+H / Shift+V)
-- **Pan** — Space+drag to scroll canvas
+- **Pan** — Space+drag to scroll canvas; two-finger pan on touch devices *(v1.6+)*
+- **Touch & stylus support** — Full Pointer Events API, works on tablets *(v1.6+)*
 - **Color picker** — Sample colors from canvas (Alt+click)
 - **Reference image** — Load translucent overlay with opacity slider
 - **Tile Usage Heatmap** *(v1.3+)* — Color-coded duplicate tile overlay
@@ -46,9 +48,10 @@ Open [index.html](index.html) for the version selector landing page.
 
 **Import:**
 - `.pc` (pattern+color combined), `.pattern`, `.color`, `.grp`
-- `.sc2` MSX Screen 2 (with sprite support)
+- `.sc2` MSX Screen 2, `.sc4` MSX2/V9938 Screen 4 — identical tile encoding *(v1.5.1+)*
 - `.pp` (10k and 40k variants)
 - ZX Spectrum: `.scr`, `.mlt`, `.mc`, `.img`, `.gig`
+- `.dat` ICVGM plain-text include (v2 GM1 + v3 GM2, with optional SATTR) *(v1.5.2+)*
 - `.fcv` ColecoVision font file *(v1.5+)*
 - `.cvstamp` multi-tile stamp *(v1.4+)*
 - `.cvproj` full project snapshot
@@ -57,6 +60,7 @@ Open [index.html](index.html) for the version selector landing page.
 
 **Export:**
 - `.pc`, `.pattern`, `.color`, `.grp`, `.sc2`, `.pp`, `.png`
+- `.dat` ICVGM plain-text include with optional SATTR sprite extension *(v1.6.1+)*
 - `.fcv` ColecoVision font file *(v1.5+)*
 - `.cvstamp` multi-tile stamp *(v1.4+)*
 - `.cvproj` project snapshot
@@ -92,7 +96,15 @@ Open [index.html](index.html) for the version selector landing page.
 
 ## Changelog
 
-### v1.5.0 — 2026-02-24 *(experimental)*
+### v1.6.1 — 2026-02-26 — Touch & ICVGM Update
+- **ICVGM `.dat` export** (File → Export .dat…): lossless tile deduplication via Compactor, GM2 MCOLOR format, optional SPATT section; optional SATTR sprite attribute extension (user warned that SATTR breaks ICVGM compatibility)
+- **SATTR round-trip**: `.dat` files containing an SATTR section restore sprite positions on import
+- `.sc4` accepted as alias for SC2 import — MSX2/V9938 Screen 4 has identical tile encoding; sprite section skipped; status message distinguishes formats *(also in v1.5.1)*
+- ICVGM `.dat` import: v2 GM1 (32-byte COLOR expanded to 2048-byte MCOLOR) and v3 GM2; NAME table remapping; SPATT loaded to sprite pattern table *(also in v1.5.2)*
+- **Touch screen & stylus support**: all mouse event listeners replaced with Pointer Events API (`pointerdown/pointermove/pointerup`); `setPointerCapture` keeps strokes on canvas edge; `touch-action:none` prevents browser gesture interference
+- **Two-finger pan**: second pointer tracked via `_ptrs` Map; midpoint delta translates canvas in normal and zoom modes
+
+### v1.5.0 — 2026-02-24
 - **Text tool** (T): type ColecoVision ROM font glyphs directly onto the canvas; full caret navigation, multi-line, alignment, solid/transparent BG modes, special character picker
 - **FCV font import/export** (Font menu): reads/writes ICVGM-format `.fcv` files; 40 standard char slots ($21–$2A, $30–$39, $40–$49, $4A–$53)
 - **Multi-dialect code export** (was "Export CVBasic"): CVBasic, C Header (SDCC), SJASMplus, WLA-DX, TNIASM; Full Screen and Selection scopes; download extension auto-updates
@@ -164,11 +176,12 @@ Open [index.html](index.html) for the version selector landing page.
 
 ## Getting Started
 
-1. Open [index.html](index.html) in any modern browser — choose v1.1 (stable) or v1.5 (experimental)
+1. Open [index.html](index.html) in any modern browser — choose your version (v1.6 recommended)
 2. Select foreground and background colors from the palette
 3. Pick a drawing tool and start creating retro pixel art
+4. On touch devices: draw with a single finger or stylus; two fingers to pan the canvas
 
-### Keyboard Shortcuts (v1.5)
+### Keyboard Shortcuts (v1.6)
 
 | Keys | Action |
 |------|--------|
@@ -207,7 +220,7 @@ Open [index.html](index.html) for the version selector landing page.
 
 ## Browser Compatibility
 
-Chrome/Edge 90+ · Firefox 88+ · Safari 14+
+Chrome/Edge 90+ · Firefox 88+ · Safari 14+ · iOS Safari 13+ (touch) · Android Chrome 90+
 
 ## Credits
 

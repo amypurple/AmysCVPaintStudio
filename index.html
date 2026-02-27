@@ -38,22 +38,36 @@
     margin-bottom: 2.5rem;
   }
 
-  .version-card {
+  /* ── Hero card (latest version) ── */
+  .hero-card {
     background: #16213e;
-    border: 1px solid #2d2d5e;
-    border-radius: 12px;
-    padding: 1.8rem 1.6rem 1.5rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    height: 100%;
+    border: 1px solid #1d6b3e;
+    border-radius: 14px;
+    padding: 1.2rem 1.5rem;
+    width: 100%;
+    max-width: 540px;
+    transition: box-shadow 0.2s;
+  }
+  .hero-card:hover {
+    box-shadow: 0 0 32px rgba(25,135,84,0.3);
+  }
+
+  /* Badge on its own line above the version row */
+  .hero-card .version-badge {
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  /* Version number + codename side by side */
+  .hero-header {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.65rem;
   }
 
-  .version-card:hover {
-    border-color: #9b59b6;
-    box-shadow: 0 0 24px rgba(155,89,182,0.25);
-  }
-
+  /* ── Badges ── */
   .version-badge {
     font-size: 0.7rem;
     font-weight: 700;
@@ -62,71 +76,190 @@
     border-radius: 4px;
     padding: 2px 8px;
     display: inline-block;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0;
   }
-
-  .badge-stable       { background: #198754; color: #fff; }
+  .badge-latest       { background: #198754; color: #fff; }
+  .badge-stable       { background: #0d6efd; color: #fff; }
+  .badge-legacy       { background: #343a40; color: #adb5bd; }
   .badge-experimental { background: #664d03; color: #ffc107; }
 
+  /* ── Hero text ── */
   .version-num {
-    font-size: 1.6rem;
+    font-size: 1.7rem;
     font-weight: 700;
     color: #e0e0ff;
-    margin-bottom: 0.2rem;
+    line-height: 1;
   }
-
   .version-name {
     color: #9b59b6;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin-bottom: 0.9rem;
   }
-
   .version-desc {
     color: #aaa;
     font-size: 0.9rem;
     line-height: 1.55;
-    flex-grow: 1;
-    margin-bottom: 1.4rem;
+    margin-bottom: 1rem;
   }
+  .version-desc ul { padding-left: 1.1rem; margin: 0.3rem 0 0; }
+  .version-desc li  { margin-bottom: 0.1rem; }
+  .filename { color: #c688e8; font-family: monospace; }
 
-  .version-desc ul {
-    padding-left: 1.1rem;
-    margin: 0.4rem 0 0;
-  }
-
-  .version-desc li { margin-bottom: 0.2rem; }
-
+  /* ── Launch button (hero) ── */
   .btn-launch {
-    width: 100%;
     font-family: 'Rajdhani', sans-serif;
     font-weight: 700;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    padding: 0.55rem;
+    padding: 0.6rem 2.4rem;
     border-radius: 6px;
     text-decoration: none;
-    display: block;
-    text-align: center;
+    display: inline-block;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .btn-latest { background: #198754; border: 2px solid #198754; color: #fff; }
+  .btn-latest:hover { background: #157347; border-color: #157347; color: #fff; }
+  /* Smaller variant used inside the modal */
+  .btn-launch-sm { font-size: 0.9rem; padding: 0.45rem 1.6rem; }
+
+  /* ── Previous releases section ── */
+  .prev-section {
+    width: 100%;
+    max-width: 540px;
+    margin-top: 2rem;
+  }
+  .prev-label {
+    color: #555;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #2d2d5e;
   }
 
-  .btn-stable {
-    background: #198754;
-    border: 2px solid #198754;
-    color: #fff;
+  /*
+   * Each row = plain flex container (not interactive itself).
+   * The <button> inside opens the popup; the <a> is the Launch link.
+   * Keeping them as siblings (not nested) avoids ARIA nesting violations.
+   */
+  .prev-item {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #1e1e3a;
+    border-radius: 6px;
   }
-  .btn-stable:hover { background: #157347; border-color: #157347; color: #fff; }
 
-  .btn-experimental {
-    background: transparent;
-    border: 2px solid #9b59b6;
-    color: #c688e8;
+  /* The clickable "details" button covers most of the row */
+  .prev-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-grow: 1;
+    padding: 0.55rem 0.4rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 6px;
+    transition: background 0.15s;
+    min-width: 0;
+    color: inherit;
+    font-family: inherit;
   }
-  .btn-experimental:hover { background: #9b59b6; color: #fff; }
+  .prev-trigger:hover { background: rgba(155,89,182,0.07); }
+  .prev-trigger .version-badge { font-size: 0.65rem; margin-bottom: 0; flex-shrink: 0; }
+  .prev-ver  { font-size: 1rem; font-weight: 700; color: #c0c0e0; min-width: 3.8rem; flex-shrink: 0; }
+  .prev-name { font-size: 0.88rem; color: #777; flex-grow: 1; text-align: left; }
 
+  /* Info hint at the right of the trigger */
+  .prev-trigger::after {
+    content: '\2139'; /* ℹ */
+    color: #444;
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-right: 0.3rem;
+    transition: color 0.15s;
+  }
+  .prev-trigger:hover::after { color: #9b59b6; }
+
+  .prev-launch {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 12px;
+    margin-right: 0.4rem;
+    border-radius: 4px;
+    text-decoration: none;
+    border: 1px solid #3a3a6a;
+    color: #888;
+    flex-shrink: 0;
+    transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .prev-launch:hover { border-color: #9b59b6; color: #c688e8; }
+
+  /* ── Features popup modal ── */
+  #featModal .modal-content {
+    background: #16213e;
+    border: 1px solid #2d2d5e;
+    border-radius: 12px;
+  }
+  #featModal .modal-header {
+    border-bottom-color: #2d2d5e;
+    padding: 0.9rem 1.1rem 0.7rem;
+    align-items: flex-start;
+  }
+  #featModal .modal-body  { padding: 0.7rem 1.1rem 0.5rem; }
+  #featModal .modal-footer {
+    border-top-color: #2d2d5e;
+    padding: 0.6rem 1.1rem;
+    justify-content: flex-start;
+  }
+  #featModal .btn-close { filter: invert(0.6); }
+  #featModal .modal-ver-num {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #e0e0ff;
+    line-height: 1;
+  }
+  #featModal .modal-ver-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #9b59b6;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.1rem;
+  }
+  .modal-ver-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+  .modal-intro {
+    color: #666;
+    font-size: 0.83rem;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+  }
+  .modal-features {
+    color: #999;
+    font-size: 0.88rem;
+    line-height: 1.65;
+    padding-left: 1.1rem;
+    margin: 0;
+  }
+  .modal-features li { margin-bottom: 0.15rem; }
+  .modal-features .hi { color: #e0e0ff; font-style: normal; }
+
+  /* ── Pixel brush decoration ── */
   .pixel-grid {
     display: grid;
     grid-template-columns: repeat(8, 7px);
@@ -145,8 +278,9 @@
     text-align: center;
     letter-spacing: 0.05em;
   }
-  footer a { color: #7d4fa0; text-decoration: none; }
+  footer a      { color: #7d4fa0; text-decoration: none; }
   footer a:hover { color: #9b59b6; }
+  footer strong  { color: #9b59b6; }
 </style>
 </head>
 <body>
@@ -166,56 +300,136 @@
   <div class="brand-title">Amy's CV Paint Studio</div>
   <div class="brand-subtitle">ColecoVision &middot; TMS9918A &middot; 256&times;192 &middot; 16 colors</div>
 
-  <div class="row g-4" style="max-width:760px; width:100%;">
-
-    <!-- v1.1 Stable -->
-    <div class="col-md-6">
-      <div class="version-card">
-        <span class="version-badge badge-stable">Stable Release</span>
-        <div class="version-num">v1.1.1</div>
-        <div class="version-name">Animation Update</div>
-        <div class="version-desc">
-          The proven, production-ready version.
-          <ul>
-            <li>Pen, Eraser, Rect, Circle, Line, Select, Fill, Stamp</li>
-            <li>Sprite editor with keyframe animation &amp; record mode</li>
-            <li>Onion skin, inline sprite properties</li>
-            <li>Dithering engine, multiple import/export formats</li>
-            <li>Tile Reuse Analyzer</li>
-          </ul>
-        </div>
-        <a href="v1.1/index.html" class="btn-launch btn-stable">Launch v1.1</a>
-      </div>
+  <!-- ═══════════════════════════════════════════════════
+       HERO: always the latest stable version.
+       When releasing a new version: update the number,
+       name, description and href here, then move this
+       hero entry into the "Previous releases" list below.
+       ═══════════════════════════════════════════════════ -->
+  <div class="hero-card">
+    <span class="version-badge badge-latest">&#9733; Latest</span>
+    <div class="hero-header">
+      <span class="version-num">v1.6.1</span>
+      <span class="version-name">Touch &amp; ICVGM Update</span>
     </div>
-
-    <!-- v1.5 Experimental -->
-    <div class="col-md-6">
-      <div class="version-card">
-        <span class="version-badge badge-experimental">Experimental</span>
-        <div class="version-num">v1.5.0</div>
-        <div class="version-name">Font &amp; Code Update</div>
-        <div class="version-desc">
-          Feature-rich development build &mdash; very capable, actively evolving.
-          <ul>
-            <li><strong style="color:#e0e0ff">Text tool</strong> &mdash; type ColecoVision ROM font onto the canvas</li>
-            <li>Tileset Compactor &amp; Heatmap overlay</li>
-            <li>Stamp import/export (.cvstamp)</li>
-            <li>Multi-dialect code export (CVBasic, C, SJASMplus&hellip;)</li>
-            <li>FCV font import/export &amp; sprite sheet import</li>
-            <li>3-tier sprite collision visualization</li>
-          </ul>
-        </div>
-        <a href="v1.5/index.html" class="btn-launch btn-experimental">Launch v1.5</a>
-      </div>
+    <div class="version-desc">
+      Recommended version &mdash; all previous features plus:
+      <ul>
+        <li>Touch screen &amp; stylus support (Pointer Events API)</li>
+        <li>Two-finger pan on canvas</li>
+        <li><span class="filename">.sc4</span> accepted alongside <span class="filename">.sc2</span> on import</li>
+        <li>ICVGM <span class="filename">.dat</span> import (v2 GM1 + v3 GM2) &amp; export</li>
+        <li>Full sprite attribute round-trip in <span class="filename">.dat</span> files</li>
+      </ul>
     </div>
+    <a href="v1.6/index.html" class="btn-launch btn-latest">Launch v1.6</a>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       PREVIOUS RELEASES: compact rows.
+       Each row has two independent controls:
+         • <button class="prev-trigger"> — opens the features popup
+         • <a class="prev-launch">       — navigates to the version
+       Feature data is stored in hidden <template> tags.
+       Add new rows at the top as versions accumulate.
+       ═══════════════════════════════════════════════════ -->
+  <div class="prev-section">
+    <div class="prev-label">Previous releases</div>
+
+    <!-- v1.5 -->
+    <div class="prev-item">
+      <button type="button" class="prev-trigger" data-feat="feat-v15">
+        <span class="version-badge badge-stable">Previous</span>
+        <span class="prev-ver">v1.5.0</span>
+        <span class="prev-name">Font &amp; Code Update</span>
+      </button>
+      <a href="v1.5/index.html" class="prev-launch">Launch</a>
+    </div>
+    <template id="feat-v15">
+      <p class="modal-intro">Feature-rich development build &mdash; very capable, actively evolving.</p>
+      <ul class="modal-features">
+        <li><em class="hi">Text tool</em> &mdash; type ColecoVision ROM font onto the canvas</li>
+        <li>Tileset Compactor &amp; Heatmap overlay</li>
+        <li>Stamp import/export (<span class="filename">.cvstamp</span>)</li>
+        <li>Multi-dialect code export (CVBasic, C, SJASMplus&hellip;)</li>
+        <li>FCV font import/export &amp; sprite sheet import</li>
+        <li>3-tier sprite collision visualization</li>
+      </ul>
+    </template>
+
+    <!-- v1.1 -->
+    <div class="prev-item">
+      <button type="button" class="prev-trigger" data-feat="feat-v11">
+        <span class="version-badge badge-legacy">Legacy</span>
+        <span class="prev-ver">v1.1.1</span>
+        <span class="prev-name">Animation Update</span>
+      </button>
+      <a href="v1.1/index.html" class="prev-launch">Launch</a>
+    </div>
+    <template id="feat-v11">
+      <p class="modal-intro">The proven, production-ready version.</p>
+      <ul class="modal-features">
+        <li>Pen, Eraser, Rect, Circle, Line, Select, Fill, Stamp</li>
+        <li>Sprite editor with keyframe animation &amp; record mode</li>
+        <li>Onion skin, inline sprite properties</li>
+        <li>Dithering engine, multiple import/export formats</li>
+        <li>Tile Reuse Analyzer</li>
+      </ul>
+    </template>
 
   </div>
 
   <footer>
-    <p>By <strong style="color:#9b59b6">Amy Purple</strong> &mdash; made with passion for retro computing.<br>
+    <p>By <strong>Amy Purple</strong> &mdash; made with passion for retro computing.<br>
     Based on original Visual Basic tools by Amy Bienvenu (NewColeco)</p>
   </footer>
 
+  <!-- ── Features popup ── -->
+  <div class="modal fade" id="featModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <span id="modalBadge" class="version-badge"></span>
+            <div class="modal-ver-row">
+              <span id="modalVer" class="modal-ver-num"></span>
+              <span id="modalName" class="modal-ver-name"></span>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-footer">
+          <a id="modalLaunch" href="#" class="btn-launch btn-latest btn-launch-sm">Launch</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  var featModal = new bootstrap.Modal(document.getElementById('featModal'));
+
+  document.querySelectorAll('.prev-trigger').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var badge      = btn.querySelector('.version-badge');
+      var badgeClass = [...badge.classList].find(function(c){ return c.startsWith('badge-'); });
+
+      document.getElementById('modalBadge').className  = 'version-badge ' + badgeClass;
+      document.getElementById('modalBadge').textContent = badge.textContent;
+      document.getElementById('modalVer').textContent   = btn.querySelector('.prev-ver').textContent;
+      document.getElementById('modalName').textContent  = btn.querySelector('.prev-name').textContent;
+      document.getElementById('modalLaunch').href       =
+        btn.closest('.prev-item').querySelector('.prev-launch').href;
+
+      /* Clone the <template> content into the modal body */
+      var body = document.getElementById('modalBody');
+      body.innerHTML = '';
+      body.appendChild(document.getElementById(btn.dataset.feat).content.cloneNode(true));
+
+      featModal.show();
+    });
+  });
+</script>
 </body>
 </html>
