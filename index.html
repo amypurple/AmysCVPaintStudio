@@ -309,20 +309,18 @@
   <div class="hero-card">
     <span class="version-badge badge-latest">&#9733; Latest</span>
     <div class="hero-header">
-      <span class="version-num">v1.6.1</span>
-      <span class="version-name">Touch &amp; ICVGM Update</span>
+      <span class="version-num">v1.8.0</span>
+      <span class="version-name">Brush &amp; Airbrush Tool</span>
     </div>
     <div class="version-desc">
       Recommended version &mdash; all previous features plus:
       <ul>
-        <li>Touch screen &amp; stylus support (Pointer Events API)</li>
-        <li>Two-finger pan on canvas</li>
-        <li><span class="filename">.sc4</span> accepted alongside <span class="filename">.sc2</span> on import</li>
-        <li>ICVGM <span class="filename">.dat</span> import (v2 GM1 + v3 GM2) &amp; export</li>
-        <li>Full sprite attribute round-trip in <span class="filename">.dat</span> files</li>
+        <li><em>Brush tool</em> (key A) &mdash; configurable round or square, radius 1–8 px</li>
+        <li><em>Airbrush mode</em> &mdash; pixel scatter for soft shading; density 10–100% (time-based: holds still to build up, fast strokes stay sparse)</li>
+        <li>Mirror H/V support &bull; Solid brush uses line interpolation (no gaps at speed)</li>
       </ul>
     </div>
-    <a href="v1.6/index.html" class="btn-launch btn-latest">Launch v1.6</a>
+    <a href="v1.8/index.html" class="btn-launch btn-latest">Launch v1.8.0</a>
   </div>
 
   <!-- ═══════════════════════════════════════════════════
@@ -335,6 +333,46 @@
        ═══════════════════════════════════════════════════ -->
   <div class="prev-section">
     <div class="prev-label">Previous releases</div>
+
+    <!-- v1.7.0 -->
+    <div class="prev-item">
+      <button type="button" class="prev-trigger" data-feat="feat-v170">
+        <span class="version-badge badge-stable">Previous</span>
+        <span class="prev-ver">v1.7.0</span>
+        <span class="prev-name">Animation Export &amp; Curve Tool</span>
+      </button>
+      <a href="v1.7/index.html" class="prev-launch">Launch</a>
+    </div>
+    <template id="feat-v170">
+      <p class="modal-intro">Adds animation export and the Curve drawing tool.</p>
+      <ul class="modal-features">
+        <li><em class="hi">Animated GIF export</em> &mdash; full LZW, TMS9918A palette, infinite loop</li>
+        <li><em class="hi">PNG Sequence export</em> &mdash; one PNG per keyframe in a ZIP</li>
+        <li><em class="hi">Sprite Sheet export</em> &mdash; all frames side-by-side as one PNG + JSON</li>
+        <li><em class="hi">Curve tool</em> (C) &mdash; Deluxe Paint-style quadratic B&eacute;zier</li>
+        <li>PLETTER via Web Worker &bull; Cursor toggle &bull; Uniform modal backgrounds</li>
+      </ul>
+    </template>
+
+    <!-- v1.6.1 -->
+    <div class="prev-item">
+      <button type="button" class="prev-trigger" data-feat="feat-v161">
+        <span class="version-badge badge-stable">Previous</span>
+        <span class="prev-ver">v1.6.1</span>
+        <span class="prev-name">ICVGM DAT Export</span>
+      </button>
+      <a href="v1.6/index.html" class="prev-launch">Launch</a>
+    </div>
+    <template id="feat-v161">
+      <p class="modal-intro">Adds full ICVGM round-trip and touch support.</p>
+      <ul class="modal-features">
+        <li><em class="hi">ICVGM .dat export</em> &mdash; lossless tile dedup, NAME+PATTERN+MCOLOR+SPATT sections</li>
+        <li><em class="hi">ICVGM .dat import SATTR round-trip</em> &mdash; sprite Y/X/pattern/color fully restored</li>
+        <li><em class="hi">Touch &amp; stylus support</em> &mdash; Pointer Events API, two-finger pan</li>
+        <li><em class="hi">PLETTER compression</em> via Web Worker (no UI freeze)</li>
+        <li>Cursor toggle: system crosshair vs custom gap-crosshair</li>
+      </ul>
+    </template>
 
     <!-- v1.5 -->
     <div class="prev-item">
