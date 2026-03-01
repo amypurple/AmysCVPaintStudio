@@ -6,9 +6,11 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 
 | Version | Status | Description |
 |---------|--------|-------------|
-| [v1.6.1](v1.6/index.html) | **Latest** | Touch & ICVGM Update — touch/stylus, two-finger pan, .dat import/export |
-| [v1.5.0](v1.5/index.html) | Previous | Font & Code Update — Text tool, code export, compactor, stamps |
-| [v1.1.1](v1.1/index.html) | Legacy | Animation Update — proven, production-ready |
+| [v1.8.0](v1.8/index.html) | **Latest** | Brush & Airbrush — solid brush + time-based airbrush mode with density control |
+| [v1.7.0](v1.7/index.html) | Previous | Animation Export & Curve — GIF / PNG sequence / sprite sheet export, Bézier curve tool |
+| [v1.6.1](v1.6/index.html) | Previous | Touch & ICVGM — touch/stylus, two-finger pan, .dat import/export |
+| [v1.5.0](v1.5/index.html) | Previous | Font & Code — Text tool, code export, compactor, stamps |
+| [v1.1.1](v1.1/index.html) | Legacy | Animation — proven, production-ready |
 
 Open [index.html](index.html) for the version selector landing page.
 
@@ -23,10 +25,12 @@ Open [index.html](index.html) for the version selector landing page.
 - **Grid Rectangle** — Character-aligned rectangle (G)
 - **Circle/Oval** — Circular and elliptical shapes, drawn from center (O)
 - **Line** — Straight lines with brush-size support (L)
+- **Curve** *(v1.7+)* — Deluxe Paint-style quadratic Bézier; drag to set start→end, move to bend live, click to commit (C)
 - **Select** — Area selection for copy/paste/stamp operations (S)
 - **Fill Bucket** — Flood fill by tile row color (B)
 - **Tile Stamp** — Capture and place single or multi-tile stamps (K)
 - **Text** *(v1.5+)* — Type ColecoVision ROM font glyphs onto the canvas (T)
+- **Brush / Airbrush** *(v1.8+)* — Solid round or square brush (radius 1–8 px) or airbrush scatter mode (density 10–100%, time-based rate); Mirror H/V supported (A)
 - **Sprite Select** — Click and nudge sprites on canvas (M, visible when sprites loaded)
 
 ### Canvas Features
@@ -35,10 +39,10 @@ Open [index.html](index.html) for the version selector landing page.
 - **Undo/Redo** — Full history (Ctrl+Z / Ctrl+Y)
 - **Grid overlay** — Toggle 8×8 character grid (X)
 - **Zoom mode** — 2× magnification with persistence (Z)
-- **Crosshair guide** — Canvas alignment aid (H)
+- **Crosshair guide** — Canvas alignment aid; toggle between system crosshair and custom gap-crosshair *(v1.7+)* (H)
 - **Mirror drawing** — Horizontal and vertical symmetry (Shift+H / Shift+V)
 - **Pan** — Space+drag to scroll canvas; two-finger pan on touch devices *(v1.6+)*
-- **Touch & stylus support** — Full Pointer Events API, works on tablets *(v1.6+)*
+- **Touch & stylus support** — Full Pointer Events API, works on tablets and drawing tablets *(v1.6+)*
 - **Color picker** — Sample colors from canvas (Alt+click)
 - **Reference image** — Load translucent overlay with opacity slider
 - **Tile Usage Heatmap** *(v1.3+)* — Color-coded duplicate tile overlay
@@ -65,6 +69,9 @@ Open [index.html](index.html) for the version selector landing page.
 - `.cvstamp` multi-tile stamp *(v1.4+)*
 - `.cvproj` project snapshot
 - Code export: CVBasic, C Header (SDCC), SJASMplus, WLA-DX, TNIASM *(v1.5+)*
+- **Animated GIF** — full LZW compression, TMS9918A palette, infinite loop *(v1.7+)*
+- **PNG Sequence** — one lossless PNG per keyframe packaged in a ZIP with meta.json *(v1.7+)*
+- **Sprite Sheet** — all animation frames tiled side-by-side as one PNG + JSON *(v1.7+)*
 
 ### Sprite System
 - Up to 32 sprites with 4-byte attribute table (X, Y, pattern, color+EC)
@@ -79,6 +86,7 @@ Open [index.html](index.html) for the version selector landing page.
 - **Animation Mode** — Frame navigation, save, new, delete, play/stop directly on canvas
 - **Record Mode** — Auto-capture on sprite drag for stop-motion workflow (`.` key)
 - **Onion Skin** — Ghost overlay of previous frame at 35% opacity
+- **Animation export** *(v1.7+)* — Animated GIF, PNG Sequence (ZIP), or Sprite Sheet from the Animation tab Export… dropdown
 - **`.cvproj`** — Saves/loads animation keyframes (backwards compatible)
 
 ### Text Tool *(v1.5+)*
@@ -96,7 +104,21 @@ Open [index.html](index.html) for the version selector landing page.
 
 ## Changelog
 
-### v1.6.1 — 2026-02-26 — Touch & ICVGM Update
+### v1.8.0 — 2026-03-01 — Brush & Airbrush Tool
+- **Brush tool** (A): solid filled stamp in round or square shape, radius 1–8 px; dragging uses `TOOLS.line()` interpolation to prevent gaps at fast movement speeds
+- **Airbrush mode**: scatters random pixels within a circular radius; density slider 10–100%; driven by a `requestAnimationFrame` loop so the stamp rate is time-based — density is clearly visible at any movement speed, and the airbrush continues building up while held still (80 ms/stamp at 10% → 8 ms/stamp at 100%); behaves identically for mouse, touch, and drawing tablets regardless of device polling rate
+- Mirror H / Mirror V support — same as pen tool
+
+### v1.7.0 — 2026-03-01 — Animation Export & Curve Tool
+- **Animated GIF export** (.gif): GIF89a with full variable-width LZW compression, TMS9918A 16-colour global palette, Netscape infinite-loop extension, frame delay from animation FPS setting
+- **PNG Sequence export** (.zip): one lossless PNG per keyframe + meta.json, assembled as a PKZIP STORED archive with no external library
+- **Sprite Sheet export** (.png + .json): all frames tiled side-by-side into a single wide PNG; companion JSON records frameCount, fps, frameWidth, frameHeight, layout
+- **Curve tool** (C): Deluxe Paint-style quadratic Bézier; phase 1 drag sets start→end, phase 2 move bends the curve live with a visible yellow control point handle and tangent skeleton; click to commit, Escape cancels at any phase; respects pen size and FG/BG color
+- **PLETTER compression** via Web Worker — no UI freeze during export
+- **Cursor toggle** (H): switch between system crosshair and custom gap-crosshair; preference saved to localStorage
+- Uniform modal backgrounds; Remap colour swatch border fix
+
+### v1.6.1 — 2026-02-26 — ICVGM DAT Export
 - **ICVGM `.dat` export** (File → Export .dat…): lossless tile deduplication via Compactor, GM2 MCOLOR format, optional SPATT section; optional SATTR sprite attribute extension (user warned that SATTR breaks ICVGM compatibility)
 - **SATTR round-trip**: `.dat` files containing an SATTR section restore sprite positions on import
 - `.sc4` accepted as alias for SC2 import — MSX2/V9938 Screen 4 has identical tile encoding; sprite section skipped; status message distinguishes formats *(also in v1.5.1)*
@@ -176,17 +198,19 @@ Open [index.html](index.html) for the version selector landing page.
 
 ## Getting Started
 
-1. Open [index.html](index.html) in any modern browser — choose your version (v1.6 recommended)
+1. Open [index.html](index.html) in any modern browser — choose your version (v1.8 recommended)
 2. Select foreground and background colors from the palette
 3. Pick a drawing tool and start creating retro pixel art
 4. On touch devices: draw with a single finger or stylus; two fingers to pan the canvas
 
-### Keyboard Shortcuts (v1.6)
+### Keyboard Shortcuts (v1.8)
 
 | Keys | Action |
 |------|--------|
 | P / E / S / B / T | Pen / Eraser / Select / Fill / Text |
 | R / G / O / L / K | Rect / GridRect / Circle / Line / Stamp |
+| C | Curve (Bézier) |
+| A | Brush / Airbrush |
 | M | Sprite Select (when sprites loaded) |
 | Z / X | Zoom / Grid toggle |
 | F / H | Fill-Outline / Crosshair toggle |
@@ -201,6 +225,8 @@ Open [index.html](index.html) for the version selector landing page.
 | Ctrl+Arrow | Move text block by 1 tile |
 | Enter / Backspace | New line / Delete at caret |
 | Escape | Commit text to canvas |
+| **Curve tool active** | |
+| Escape | Cancel curve at any phase |
 
 ---
 
