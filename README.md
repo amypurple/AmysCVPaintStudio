@@ -6,7 +6,8 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 
 | Version | Status | Description |
 |---------|--------|-------------|
-| [v1.8.0](v1.8/index.html) | **Latest** | Brush & Airbrush — solid brush + time-based airbrush mode with density control |
+| [v1.8.1](v1.8/index.html) | **Latest** | Responsive Layout & Fluid Canvas — full-viewport layout, fluid non-integer canvas scaling, palette strip beside canvas, smooth sidebar scaling via clamp() |
+| [v1.8.0](v1.8/index.html) | Previous | Brush & Airbrush — solid brush + time-based airbrush mode with density control |
 | [v1.7.0](v1.7/index.html) | Previous | Animation Export & Curve — GIF / PNG sequence / sprite sheet export, Bézier curve tool |
 | [v1.6.1](v1.6/index.html) | Previous | Touch & ICVGM — touch/stylus, two-finger pan, .dat import/export |
 | [v1.5.0](v1.5/index.html) | Previous | Font & Code — Text tool, code export, compactor, stamps |
@@ -103,6 +104,14 @@ Open [index.html](index.html) for the version selector landing page.
 ---
 
 ## Changelog
+
+### v1.8.1 — 2026-03-02 — Responsive Layout & Fluid Canvas
+- **Full-viewport layout**: app locks to browser height on screens ≥ 992px; mobile retains natural scrolling
+- **Fluid canvas scaling**: canvas fills all available space at any non-integer scale; `image-rendering: pixelated` keeps pixels crisp; coordinate mapping via `getBoundingClientRect` was already scale-agnostic so drawing precision is unaffected
+- **Palette strip** moved to a vertical column beside the canvas; height auto-tracks the canvas frame so Remap is always visible; swatches divide available height equally
+- **Clear button** moved to toolbar as a compact icon-only delete button beside the scroll arrows
+- **Sidebar compaction**: Filled/Outline toggle merged into pen-size row; Grid/Zoom/Crosshair/Mirror H/V/Cursor condensed into one 6-icon row; FG/BG Active heading removed
+- **Smooth sidebar scaling via `clamp()`**: icons, padding, color boxes, and swatches scale continuously with viewport width; sidebar itself has fluid clamped width so it grows with the screen
 
 ### v1.8.0 — 2026-03-01 — Brush & Airbrush Tool
 - **Brush tool** (A): solid filled stamp in round or square shape, radius 1–8 px; dragging uses `TOOLS.line()` interpolation to prevent gaps at fast movement speeds

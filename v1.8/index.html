@@ -35,17 +35,82 @@
         font-family: 'Rajdhani', sans-serif;
         font-weight: 600;
         user-select: none;
-        overflow-y: auto;
+        overflow-y: auto; /* natural scroll on phones/small screens */
     }
 
-    .app-shell { max-width: 1100px; margin: 0.5rem auto; }
+    .app-shell { width: 100%; margin: 0; }
 
     .coleco-card {
         background: var(--card-bg);
         border: 1px solid #c0c0c0;
         border-top: none;
         box-shadow: 0 10px 20px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8);
-        padding: 15px; 
+        padding: 15px;
+    }
+
+    /* Palette strip — sits to the left of the canvas, vertical column of swatches */
+    #canvasPaletteStrip {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        flex-shrink: 0;
+        padding-left: 5px;
+        padding-right: 6px;
+        overflow: hidden;
+    }
+    /* paletteContainer fills remaining strip height; swatches divide it equally */
+    #canvasPaletteStrip #paletteContainer {
+        flex: 1;
+        min-height: 0;
+        gap: 2px; /* override Bootstrap gap-1 */
+    }
+    #canvasPaletteStrip .palette-swatch {
+        flex: 1;
+        min-height: 0;
+    }
+
+    /* Canvas center box — fills remaining horizontal space; canvas frame centers inside it */
+    #canvasCenterBox {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    /* Large screens (992px+): lock app to viewport height, no page scroll */
+    @media (min-width: 992px) {
+        html, body { height: 100%; }
+        body { overflow: hidden; display: flex; flex-direction: column; }
+        .app-shell { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        .coleco-card { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        #mainLayout { flex: 1; min-height: 0; align-items: stretch; flex-wrap: nowrap; }
+        /* Canvas col fills all remaining width; sidebar has a fluid fixed width */
+        #canvasCol { display: flex; flex-direction: column; overflow: hidden; min-height: 0; flex: 1 1 0 !important; max-width: none !important; width: auto !important; }
+        #canvasAndPalette { flex: 1; min-height: 0; overflow: hidden; }
+        /* Sidebar: fluid width — clamp grows it smoothly from 220px at small viewports to 520px at very wide */
+        #sidebarCol { overflow-y: auto; min-height: 0;
+            flex: 0 0 clamp(220px, 27vw, 520px) !important;
+            max-width: clamp(220px, 27vw, 520px) !important; }
+
+        /* All sidebar icons, buttons, and swatches scale smoothly with viewport width via clamp().
+           !important is required to override inline style="font-size:...px" attributes. */
+        #sidebarCol .material-symbols-outlined {
+            font-size: clamp(16px, 1.7vw, 38px) !important; }
+        #sidebarCol .btn-group-sm .btn {
+            padding-top:    clamp(0.15rem, 0.45vw, 0.8rem);
+            padding-bottom: clamp(0.15rem, 0.45vw, 0.8rem); }
+        #sidebarCol .current-color-box {
+            width:  clamp(36px, 3.5vw, 90px) !important;
+            height: clamp(30px, 2.8vw, 72px) !important; }
+        #sidebarCol .palette-swatch {
+            width:  clamp(28px, 2.2vw, 54px) !important;
+            height: clamp(22px, 1.8vw, 44px) !important; }
+        #canvasPaletteStrip .palette-swatch {
+            width: clamp(28px, 2.2vw, 54px) !important; }
+        #sidebarCol .small {
+            font-size: clamp(0.7rem, 0.8vw, 1rem) !important; }
     }
 
     .navbar {
@@ -263,28 +328,37 @@
     </nav>
 
     <div class="coleco-card rounded-bottom">
-        <div class="row g-3">
-            <div class="col-lg-8">
-                <div class="d-flex mb-2 flex-wrap gap-2 justify-content-center bg-white p-1 rounded border">
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollUp1" title="Scroll up 1 tile"><span class="material-symbols-outlined">keyboard_arrow_up</span></button>
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollUp8" title="Scroll up 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_up</span></button>
+        <div class="row g-3" id="mainLayout">
+            <div class="col-lg-8" id="canvasCol">
+                <div class="d-flex mb-2 gap-2 align-items-center bg-white p-1 rounded border">
+                    <div class="d-flex gap-2 flex-wrap flex-grow-1 justify-content-center">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary py-0" id="btnScrollUp1" title="Scroll up 1 tile"><span class="material-symbols-outlined">keyboard_arrow_up</span></button>
+                            <button class="btn btn-outline-secondary py-0" id="btnScrollUp8" title="Scroll up 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_up</span></button>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary py-0" id="btnScrollDown1" title="Scroll down 1 tile"><span class="material-symbols-outlined">keyboard_arrow_down</span></button>
+                            <button class="btn btn-outline-secondary py-0" id="btnScrollDown8" title="Scroll down 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_down</span></button>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary py-0" id="btnScrollLeft1" title="Scroll left 1 tile"><span class="material-symbols-outlined">keyboard_arrow_left</span></button>
+                            <button class="btn btn-outline-secondary py-0" id="btnScrollLeft8" title="Scroll left 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_left</span></button>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary py-0" id="btnScrollRight1" title="Scroll right 1 tile"><span class="material-symbols-outlined">keyboard_arrow_right</span></button>
+                            <button class="btn btn-outline-secondary py-0" id="btnScrollRight8" title="Scroll right 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_right</span></button>
+                        </div>
                     </div>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollDown1" title="Scroll down 1 tile"><span class="material-symbols-outlined">keyboard_arrow_down</span></button>
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollDown8" title="Scroll down 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_down</span></button>
-                    </div>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollLeft1" title="Scroll left 1 tile"><span class="material-symbols-outlined">keyboard_arrow_left</span></button>
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollLeft8" title="Scroll left 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_left</span></button>
-                    </div>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollRight1" title="Scroll right 1 tile"><span class="material-symbols-outlined">keyboard_arrow_right</span></button>
-                        <button class="btn btn-outline-secondary py-0" id="btnScrollRight8" title="Scroll right 8 tiles"><span class="material-symbols-outlined">keyboard_double_arrow_right</span></button>
-                    </div>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1 flex-shrink-0" id="btnClear" title="Clear canvas — erase all tile data"><span class="material-symbols-outlined" style="font-size:16px">delete</span></button>
                 </div>
 
-                <div class="d-flex justify-content-center mb-2">
+                <div class="d-flex" id="canvasAndPalette">
+                    <!-- Palette strip: sits to the left of the canvas between toolbar and status bar -->
+                    <div id="canvasPaletteStrip">
+                        <div id="paletteContainer" class="d-flex flex-column gap-1"></div>
+                        <button class="btn btn-outline-secondary btn-sm w-100 mt-1" id="btnRemap" title="Remap Colors" style="font-size:0.65rem;padding:1px 2px">Remap</button>
+                    </div>
+                <div id="canvasCenterBox">
                     <div class="canvas-frame">
                         <div class="corner corner-tl"></div>
                         <div class="edge edge-t"></div>
@@ -300,6 +374,7 @@
                         <div class="corner corner-br"></div>
                     </div>
                 </div>
+                </div><!-- /canvasAndPalette -->
 
                 <!-- Animation Mode Bar -->
                 <div id="animModeBar" style="display:none;font-size:0.75rem" class="align-items-center gap-2 px-2 py-1 bg-dark text-white small mb-1 rounded-bottom">
@@ -327,20 +402,11 @@
                 </div>
             </div>
 
-            <div class="col-lg-4">
-                <div class="row g-2">
-                    <div class="col-6 col-lg-3">
-                        <div class="mb-1 fw-bold small text-uppercase text-muted" style="font-size:0.75rem">Palette</div>
-                        <div id="paletteContainer" class="d-flex flex-column gap-1"></div>
-                        <button class="btn btn-outline-secondary btn-sm w-100 mt-2" id="btnRemap" title="Remap Colors" style="font-size:0.7rem">Remap</button>
-                    </div>
-                    <div class="col-6 col-lg-9 d-flex flex-column">
-                        <div class="mb-2 p-2 bg-white border rounded">
-                            <div class="small text-uppercase fw-bold text-muted mb-1" style="font-size:0.75rem">Active</div>
-                            <div class="d-flex align-items-center gap-3 justify-content-center">
-                                <div><div class="current-color-box mb-1" id="fgBox"></div><div class="text-center small fw-bold">FG</div></div>
-                                <div><div class="current-color-box mb-1" id="bgBox"></div><div class="text-center small fw-bold">BG</div></div>
-                            </div>
+            <div class="col-lg-4" id="sidebarCol">
+                <div class="d-flex flex-column">
+                        <div class="mb-2 p-1 bg-white border rounded d-flex justify-content-center gap-3 align-items-center">
+                            <div class="text-center"><div class="current-color-box mb-1" id="fgBox"></div><div class="small fw-bold" style="font-size:0.7rem">FG</div></div>
+                            <div class="text-center"><div class="current-color-box mb-1" id="bgBox"></div><div class="small fw-bold" style="font-size:0.7rem">BG</div></div>
                         </div>
 
                         <div class="mb-2">
@@ -379,11 +445,8 @@
                                 <input type="radio" class="btn-check" name="tool" id="toolSprite" style="display:none;">
                             </div>
                         </div>
-                        <button class="btn btn-sm btn-outline-secondary w-100 mb-2" id="btnFillOutline" title="Toggle Fill/Outline (F)">
-                            <span class="material-symbols-outlined" style="font-size:16px" id="fillOutlineIcon">format_color_fill</span> <span id="fillOutlineText">Filled</span>
-                        </button>
-
                         <div class="btn-group btn-group-sm d-flex mb-2 shadow-sm" id="penSizeGroup">
+                            <button class="btn btn-outline-secondary py-1" id="btnFillOutline" title="Toggle Fill/Outline (F)"><span class="material-symbols-outlined" style="font-size:16px" id="fillOutlineIcon">format_color_fill</span><span id="fillOutlineText" class="d-none">Filled</span></button>
                             <button class="btn btn-outline-secondary py-1 active" id="penSize1" title="1px stroke">1px</button>
                             <button class="btn btn-outline-secondary py-1" id="penSize2" title="2px stroke">2px</button>
                             <button class="btn btn-outline-secondary py-1" id="penSize3" title="3px stroke">3px</button>
@@ -427,12 +490,12 @@
                         </div>
 
                         <div class="btn-group btn-group-sm d-flex mb-1 shadow-sm">
-                            <button class="btn btn-outline-secondary py-1" id="btnGrid" title="Toggle Grid (X)">
-                                <span class="material-symbols-outlined" style="font-size:18px">grid_on</span> Grid
-                            </button>
-                            <button class="btn btn-outline-secondary py-1" id="btnZoom" title="Toggle Zoom (Z)">
-                                <span class="material-symbols-outlined" id="btnZoomIcon" style="font-size:18px">zoom_in</span> Zoom
-                            </button>
+                            <button class="btn btn-outline-secondary py-1" id="btnGrid" title="Toggle Grid (X)"><span class="material-symbols-outlined" style="font-size:18px">grid_on</span></button>
+                            <button class="btn btn-outline-secondary py-1" id="btnZoom" title="Toggle Zoom (Z)"><span class="material-symbols-outlined" id="btnZoomIcon" style="font-size:18px">zoom_in</span></button>
+                            <button class="btn btn-outline-secondary py-1" id="btnCrosshair" title="Crosshair Guide (H)"><span class="material-symbols-outlined" style="font-size:18px">add</span></button>
+                            <button class="btn btn-outline-secondary py-1" id="btnMirrorH" title="Mirror Horizontal (Shift+H)"><span class="material-symbols-outlined" style="font-size:18px">flip</span></button>
+                            <button class="btn btn-outline-secondary py-1" id="btnMirrorV" title="Mirror Vertical (Shift+V)"><span class="material-symbols-outlined" style="font-size:18px" style="transform:rotate(90deg)">flip</span></button>
+                            <button class="btn btn-outline-secondary py-1" id="btnCustomCursor" title="Toggle cursor: System crosshair ↔ Custom gap-crosshair"><span class="material-symbols-outlined" style="font-size:18px">mouse</span></button>
                         </div>
                         <!-- Sprite controls row — only shown when sprites are loaded -->
                         <div class="btn-group btn-group-sm d-flex mb-2 shadow-sm" id="spriteControlsRow" style="display:none!important">
@@ -445,20 +508,6 @@
                             <label class="btn btn-sm btn-outline-warning py-1" for="toolSprite" id="toolSpriteLabel" title="Sprite Select tool (M) — click sprites on canvas to select and move them">
                                 <span class="material-symbols-outlined" style="font-size:18px">ads_click</span> Select
                             </label>
-                        </div>
-                        <div class="btn-group btn-group-sm d-flex mb-2 shadow-sm" role="group">
-                            <button class="btn btn-outline-secondary py-1" id="btnCrosshair" title="Crosshair Guide (H)">
-                                <span class="material-symbols-outlined" style="font-size:18px">add</span> Cross
-                            </button>
-                            <button class="btn btn-outline-secondary py-1" id="btnMirrorH" title="Mirror Horizontal (Shift+H)">
-                                <span class="material-symbols-outlined" style="font-size:18px">flip</span> H
-                            </button>
-                            <button class="btn btn-outline-secondary py-1" id="btnMirrorV" title="Mirror Vertical (Shift+V)">
-                                <span class="material-symbols-outlined" style="font-size:18px">flip</span> V
-                            </button>
-                            <button class="btn btn-outline-secondary py-1" id="btnCustomCursor" title="Toggle cursor: System crosshair ↔ Custom gap-crosshair">
-                                <span class="material-symbols-outlined" style="font-size:18px">mouse</span>
-                            </button>
                         </div>
 
                         <!-- Reference Image Overlay -->
@@ -508,12 +557,8 @@
                           </div>
                         </div>
 
-                        <button class="btn btn-sm btn-outline-danger w-100 mb-2 py-1" id="btnClear">
-                            <span class="material-symbols-outlined" style="font-size:16px;">delete</span> Clear
-                        </button>
-                        
+
                     </div>
-                </div>
             </div>
         </div>
     </div>
@@ -8399,6 +8444,40 @@ document.getElementById("ditherMethod").onchange = function() {
 document.getElementById("fitMode").onchange = () => { document.getElementById("fitMode").checked=true; DITHER.updateSource("fit"); };
 document.getElementById("stretchMode").onchange = () => { document.getElementById("stretchMode").checked=true; DITHER.updateSource("stretch"); };
 document.getElementById("btnImportDithered").onclick = importDitheredImage;
+
+// Fluid canvas scaling — fits the canvas to the largest integer scale that fills the available space.
+// Integer scales keep pixels crisp (no sub-pixel blending). toCanvasCoords uses getBoundingClientRect
+// so coordinate mapping is automatic at any scale. Zoom mode operates in canvas-buffer space (256×192)
+// and is unaffected by CSS display size.
+function fitCanvas() {
+    const box = document.getElementById('canvasCenterBox');
+    if (!box) return;
+    const availW = box.clientWidth;
+    const availH = box.clientHeight;
+    if (availW < 1 || availH < 1) return; // degenerate — nothing to measure yet
+    // Fill available space with the largest scale that fits both axes.
+    // image-rendering:pixelated on the canvas keeps pixels crisp at any non-integer scale.
+    // getBoundingClientRect-based getCoords() works correctly at any scale.
+    const scale = Math.max(1, Math.min(availW / (256 + 16), availH / (192 + 16)));
+    const cw = Math.round(256 * scale), ch = Math.round(192 * scale);
+    const frame = document.querySelector('.canvas-frame');
+    frame.style.gridTemplateColumns = `8px ${cw}px 8px`;
+    frame.style.gridTemplateRows    = `8px ${ch}px 8px`;
+    const wrapper = document.querySelector('.canvas-wrapper');
+    wrapper.style.width  = cw + 'px';
+    wrapper.style.height = ch + 'px';
+    document.querySelectorAll('.canvas-wrapper canvas').forEach(c => {
+        c.style.width  = cw + 'px';
+        c.style.height = ch + 'px';
+    });
+    // Palette strip height tracks the canvas frame (ch + 16px for top+bottom borders)
+    // so the Remap button never scrolls out of view regardless of screen resolution.
+    const strip = document.getElementById('canvasPaletteStrip');
+    if (strip) strip.style.height = (ch + 16) + 'px';
+    if (typeof RENDERER !== 'undefined') { RENDERER.render(); RENDERER.drawGrid(); }
+}
+window.addEventListener('resize', fitCanvas);
+requestAnimationFrame(fitCanvas); // run after first layout pass so clientWidth/Height are available
 
 // Airbrush rAF loop — fires time-gated stamps while pointer held down, including when held still.
 // Density 10% → ~80ms interval, density 100% → ~8ms interval (linear).
