@@ -6,8 +6,8 @@ A retro-inspired pixel art editor that emulates the iconic ColecoVision graphics
 
 | Version | Status | Description |
 |---------|--------|-------------|
-| [v1.8.1](v1.8/index.html) | **Latest** | Responsive Layout & Fluid Canvas — full-viewport layout, fluid non-integer canvas scaling, palette strip beside canvas, smooth sidebar scaling via clamp() |
-| [v1.8.0](v1.8/index.html) | Previous | Brush & Airbrush — solid brush + time-based airbrush mode with density control |
+| [v2.0](v2.0/index.html) | **Latest** | Tile Editor Mode — GM1/GM2 colour modes, 10 name tables, charset editor, stamp/select tools, sprite preview, GM2 tier markers |
+| [v1.8.1](v1.8/index.html) | Previous | Responsive Layout & Fluid Canvas — full-viewport layout, fluid non-integer canvas scaling, palette strip beside canvas, smooth sidebar scaling via clamp() |
 | [v1.7.0](v1.7/index.html) | Previous | Animation Export & Curve — GIF / PNG sequence / sprite sheet export, Bézier curve tool |
 | [v1.6.1](v1.6/index.html) | Previous | Touch & ICVGM — touch/stylus, two-finger pan, .dat import/export |
 | [v1.5.0](v1.5/index.html) | Previous | Font & Code — Text tool, code export, compactor, stamps |
@@ -18,6 +18,18 @@ Open [index.html](index.html) for the version selector landing page.
 ---
 
 ## Features
+
+### Tile Editor Mode *(v2.0+)*
+- **GM1 / GM2 colour modes** — one FG+BG colour per 8-tile group (GM1) or per tile row (GM2)
+- **10 independent name tables** — 32×24 screens, switchable via toolbar arrows or keys 1–9 / 0
+- **Charset editor** — 256-tile grid (click to select); per-tile pixel editor (16× zoom); flip H/V, rotate 90°, invert, copy/paste
+- **Drawing tools** — Draw (paint tile), Text (ColecoVision font tiles), Select (region), Stamp (paste captured region)
+- **Transparent tile skip** — stamp paste can skip a configurable tile index (e.g. $00 for blank)
+- **Sprite preview** — existing sprites rendered over the tile map (view only, same data as bitmap mode)
+- **GM2 tier markers** — amber dashed lines at y=64 / y=128 when grid is on, marking the 3 independent pattern banks
+- **Drag-and-drop** — `.dat` files auto-route to tile import; charset SC2 auto-opens in tile editor
+- **→ Bitmap** — flatten tile map into the bitmap editor
+- **Full undo/redo** — all tile operations tracked across all name tables
 
 ### Drawing Tools
 - **Pen** — Freehand pixel-by-pixel drawing with smart FG/BG color logic (P)
@@ -104,6 +116,20 @@ Open [index.html](index.html) for the version selector landing page.
 ---
 
 ## Changelog
+
+### v2.0 — 2026-03-09 — Tile Editor Mode
+- **Tile Editor mode** (Tiles menu → Open Tile Editor): full GM1 & GM2 colour modes for TMS9918A tile map editing
+- **10 independent 32×24 name tables**: switchable via ‹ / › toolbar arrows, dropdown, or keyboard 1–9 / 0; each screen is fully independent
+- **Charset editor**: 256-tile grid (click to select tile); per-tile pixel editor at 16× zoom; flip H/V, rotate 90°, invert bits, copy/paste pattern
+- **Tile drawing tools** in sidebar: Draw (paint selected tile on map), Text (insert ROM-font tiles), Select (drag to mark region), Stamp (capture region → paste)
+- **Transparent tile skip**: stamp paste skips a user-defined tile index ($00–$FF hex); checkbox + hex input in sidebar
+- **Sprite layer preview**: existing sprites rendered over the tile map (view only — same attribute/pattern data as bitmap mode)
+- **GM2 tier boundary markers**: when grid is enabled, amber dashed lines at y=64 and y=128 mark the three independent TMS9918A pattern banks in both bitmap and tile editor modes
+- **Drag-and-drop routing**: `.dat` dropped while in tile mode loads directly into tile editor; charset SC2 files auto-open in tile editor without confirmation; non-charset SC2 with differing pattern banks prompts flatten-to-bitmap
+- **→ Bitmap button**: flattens tile map into bitmap editor (exits tile mode)
+- **Full undo/redo**: tile edits, charset pixel changes, colour picks, and screen switches all tracked in history
+- Crosshair guide fixed in tile mode (mouse position now tracked through all tile tool branches)
+- Canvas resize re-renders tile map correctly when in tile mode
 
 ### v1.8.1 — 2026-03-02 — Responsive Layout & Fluid Canvas
 - **Full-viewport layout**: app locks to browser height on screens ≥ 992px; mobile retains natural scrolling
@@ -207,12 +233,12 @@ Open [index.html](index.html) for the version selector landing page.
 
 ## Getting Started
 
-1. Open [index.html](index.html) in any modern browser — choose your version (v1.8 recommended)
+1. Open [index.html](index.html) in any modern browser — choose your version (v2.0 recommended)
 2. Select foreground and background colors from the palette
 3. Pick a drawing tool and start creating retro pixel art
 4. On touch devices: draw with a single finger or stylus; two fingers to pan the canvas
 
-### Keyboard Shortcuts (v1.8)
+### Keyboard Shortcuts (v2.0)
 
 | Keys | Action |
 |------|--------|
@@ -236,6 +262,10 @@ Open [index.html](index.html) for the version selector landing page.
 | Escape | Commit text to canvas |
 | **Curve tool active** | |
 | Escape | Cancel curve at any phase |
+| **Tile Editor active** | |
+| 1–9 / 0 | Switch to name table 1–9 / 10 |
+| PageUp / PageDown | Previous / Next name table |
+| X / Z / H | Grid toggle / Zoom / Crosshair (same as bitmap) |
 
 ---
 
@@ -251,6 +281,8 @@ Open [index.html](index.html) for the version selector landing page.
 | Sprite Attributes | 128 bytes (32 sprites × 4 bytes) |
 | Sprite Patterns | 2,048 bytes |
 | Animation Keyframes | Up to 120 frames (128 bytes each) |
+| Tile Name Tables | 10 independent 32×24 screens (768 bytes each) |
+| Tile Charset | 256 tiles × 8 rows = 2,048 bytes (bank 0) |
 | Distribution | Single HTML file, no build steps |
 
 ## Browser Compatibility
