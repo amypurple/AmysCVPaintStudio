@@ -519,14 +519,15 @@
                                 </button>
                             </div>
 
-                            <!-- Transparent-tile skip (Stamp tool only) -->
-                            <div id="tileStampTranspGroup" style="display:none" class="align-items-center gap-1 mb-1">
-                                <input type="checkbox" id="chkTileStampTransp"
-                                       title="When checked, tiles with the given index are skipped during paste (transparent)">
-                                <label for="chkTileStampTransp" class="small mb-0" style="cursor:pointer;font-size:0.75rem">Skip:</label>
+                            <!-- Blank tile — used by Ctrl+X (cut) and stamp paste Skip -->
+                            <div id="tileStampTranspGroup" style="display:flex" class="align-items-center gap-1 mb-1 flex-wrap">
+                                <label class="small mb-0" style="font-size:0.75rem;white-space:nowrap">Blank:</label>
                                 <input type="text" id="numTileStampTranspIdx" maxlength="4" value="$00"
                                        style="width:56px;font-size:0.75rem;font-family:monospace"
-                                       title="Tile index to skip — $00–$FF (hex) or 0–255 (decimal)">
+                                       title="Blank tile index ($00–$FF hex or 0–255 decimal) — used by Ctrl+X to fill the cut region, and by stamp paste when Skip is checked">
+                                <input type="checkbox" id="chkTileStampTransp"
+                                       title="Skip blank tile when stamping (paste ignores tiles matching the Blank index)">
+                                <label for="chkTileStampTransp" class="small mb-0" style="cursor:pointer;font-size:0.75rem">Skip</label>
                             </div>
 
                             <!-- Text alignment (Text tool only) -->
@@ -5823,6 +5824,10 @@ const INPUT = {
         // Keyboard
         window.addEventListener("keydown", e => {
             if(document.querySelector(".modal.show")) return;
+            // Don't steal keystrokes while the user is typing in an input or textarea
+            // (Escape is still allowed so modal/tool cancel shortcuts keep working)
+            const tag = document.activeElement && document.activeElement.tagName;
+            if ((tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') && e.key !== 'Escape') return;
             const k = e.key.toLowerCase(), ctrl = (e.ctrlKey||e.metaKey);
 
             // Tile text tool — intercept keys while tile text cursor is active
@@ -5930,6 +5935,59 @@ const INPUT = {
                     document.getElementById('tileTableSelect').value = String(MODEL.tiles.currentTable);
                     TILE_RENDERER.render();
                     UI.setStatus(`TILE SCREEN ${MODEL.tiles.currentTable + 1}/10`);
+                    return;
+                }
+                // Escape — cancel selection or exit stamp back to select
+                if (e.key === 'Escape') {
+                    if (TILE_STATE.selection) {
+                        e.preventDefault(); TILE_STATE.selection = null; TILE_RENDERER.render(); return;
+                    }
+                    if (TILE_STATE.tool === 'tilestamp') {
+                        e.preventDefault(); document.getElementById('btnTileToolSelect').click(); return;
+                    }
+                }
+                // Ctrl+C — copy selected tile region as stamp
+                if (ctrl && k === 'c') {
+                    e.preventDefault();
+                    if (!TILE_STATE.selection) { UI.setStatus('Ctrl+C: select a region first (Sel tool)'); return; }
+                    const sel = TILE_STATE.selection;
+                    const data = new Uint8Array(sel.w * sel.h);
+                    for (let sy = 0; sy < sel.h; sy++)
+                        for (let sx = 0; sx < sel.w; sx++)
+                            data[sy * sel.w + sx] = MODEL.tiles.name[(sel.y + sy) * 32 + (sel.x + sx)];
+                    TILE_STATE.tileStamp = { w: sel.w, h: sel.h, data };
+                    TILE_STATE.selection = null;
+                    TILE_RENDERER.render();
+                    UI.setStatus(`COPIED ${sel.w}×${sel.h} tiles — Ctrl+V to paste`);
+                    return;
+                }
+                // Ctrl+X — cut selected tile region (fills source with blank tile)
+                if (ctrl && k === 'x') {
+                    e.preventDefault();
+                    if (!TILE_STATE.selection) { UI.setStatus('Ctrl+X: select a region first (Sel tool)'); return; }
+                    const sel = TILE_STATE.selection;
+                    const data = new Uint8Array(sel.w * sel.h);
+                    for (let sy = 0; sy < sel.h; sy++)
+                        for (let sx = 0; sx < sel.w; sx++)
+                            data[sy * sel.w + sx] = MODEL.tiles.name[(sel.y + sy) * 32 + (sel.x + sx)];
+                    TILE_STATE.tileStamp = { w: sel.w, h: sel.h, data };
+                    const blank = TILE_STATE.stampTransparentTile;
+                    const blankHex = '$' + blank.toString(16).padStart(2, '0').toUpperCase();
+                    for (let sy = 0; sy < sel.h; sy++)
+                        for (let sx = 0; sx < sel.w; sx++)
+                            MODEL.tiles.name[(sel.y + sy) * 32 + (sel.x + sx)] = blank;
+                    TILE_STATE.selection = null;
+                    TILE_RENDERER.render();
+                    HISTORY.push();
+                    UI.setStatus(`CUT ${sel.w}×${sel.h} tiles (filled with ${blankHex}) — Ctrl+V to paste`);
+                    return;
+                }
+                // Ctrl+V — activate stamp tool to place copied/cut region
+                if (ctrl && k === 'v') {
+                    e.preventDefault();
+                    if (!TILE_STATE.tileStamp) { UI.setStatus('Ctrl+V: nothing to paste — use Ctrl+C or Ctrl+X first'); return; }
+                    document.getElementById('btnTileToolTileStamp').click();
+                    UI.setStatus(`Paste ${TILE_STATE.tileStamp.w}×${TILE_STATE.tileStamp.h} stamp — click canvas to place`);
                     return;
                 }
             }
@@ -6313,7 +6371,25 @@ const UI = {
         // Buttons
         document.getElementById("btnUndo").onclick = () => HISTORY.undo();
         document.getElementById("btnRedo").onclick = () => HISTORY.redo();
-        document.getElementById("btnClear").onclick = () => { if(confirm("Clear?")) { MODEL.clear(STATE.fgIndex, STATE.bgIndex); STATE.selection = null; STATE.isPasting = false; MODEL.clipboard = null; MODEL.sprites.attributes.fill(0); for(let i=0;i<32;i++) MODEL.sprites.attributes[i*4]=208; MODEL.sprites.patterns.fill(0); MODEL.sprites.count=0; MODEL.sprites.enabled=false; MODEL.sprites.hasPatterns=false; STATE.selectedSprites=[]; MODEL.animation.keyframes=[]; MODEL.animation.currentFrame=-1; MODEL.animation.playing=false; if(MODEL.animation._interval){clearInterval(MODEL.animation._interval);MODEL.animation._interval=null;} UI.updateSpriteUI(); RENDERER.render(); HISTORY.push(); }};
+        document.getElementById("btnClear").onclick = () => {
+            if (TILE_STATE.active) {
+                // Tile mode: fill current screen with the blank tile
+                // Read directly from input at click time (safest — avoids stale state)
+                const raw = document.getElementById('numTileStampTranspIdx').value.trim().replace(/^\$/, '').replace(/^0x/i, '');
+                const parsed = parseInt(raw, 16);
+                const tile = (!isNaN(parsed)) ? Math.max(0, Math.min(255, parsed)) : TILE_STATE.stampTransparentTile;
+                TILE_STATE.stampTransparentTile = tile; // keep in sync
+                const tileHex = '$' + tile.toString(16).padStart(2, '0').toUpperCase();
+                if (!confirm(`Fill Screen ${MODEL.tiles.currentTable + 1} with blank tile ${tileHex}?`)) return;
+                // Direct array access — bypass getter to guarantee correct table is filled
+                MODEL.tiles.nameTables[MODEL.tiles.currentTable].fill(tile);
+                TILE_RENDERER.render(); HISTORY.push();
+                UI.setStatus(`Screen ${MODEL.tiles.currentTable + 1} filled with ${tileHex}`);
+                return;
+            }
+            // Bitmap mode: clear canvas + sprites
+            if(confirm("Clear?")) { MODEL.clear(STATE.fgIndex, STATE.bgIndex); STATE.selection = null; STATE.isPasting = false; MODEL.clipboard = null; MODEL.sprites.attributes.fill(0); for(let i=0;i<32;i++) MODEL.sprites.attributes[i*4]=208; MODEL.sprites.patterns.fill(0); MODEL.sprites.count=0; MODEL.sprites.enabled=false; MODEL.sprites.hasPatterns=false; STATE.selectedSprites=[]; MODEL.animation.keyframes=[]; MODEL.animation.currentFrame=-1; MODEL.animation.playing=false; if(MODEL.animation._interval){clearInterval(MODEL.animation._interval);MODEL.animation._interval=null;} UI.updateSpriteUI(); RENDERER.render(); HISTORY.push(); }
+        };
         document.getElementById("btnGrid").onclick = () => { STATE.gridEnabled = !STATE.gridEnabled; if (TILE_STATE.active) TILE_RENDERER.render(); else RENDERER.render(); };
         document.getElementById("chkCollisions").onchange = (e) => { STATE.showCollisions = e.target.checked; RENDERER.drawGrid(); };
         this._initInlineSpriteHandlers();
@@ -7150,7 +7226,6 @@ const UI = {
         document.getElementById('tileModeBar').style.display = 'flex';
         document.getElementById('tileSidebarPanel').style.display = '';
         document.getElementById('tileTextAlignGroup').style.display = 'none'; // hidden until Text tool selected
-        document.getElementById('tileStampTranspGroup').style.display = 'none'; // hidden until Stamp tool selected
         document.getElementById('chkTileStampTransp').checked = false;
         document.getElementById('numTileStampTranspIdx').value = '$00';
         // Masquer les panneaux bitmap — setProperty !important pour écraser d-flex Bootstrap
@@ -7181,7 +7256,6 @@ const UI = {
         document.getElementById('tileModeBar').style.display = 'none';
         document.getElementById('tileSidebarPanel').style.display = 'none';
         document.getElementById('tileTextAlignGroup').style.display = 'none';
-        document.getElementById('tileStampTranspGroup').style.display = 'none';
         // Restaurer les panneaux bitmap — removeProperty laisse Bootstrap d-flex reprendre le contrôle
         ['bitmapFgBgPanel', 'bitmapDrawTools', 'penSizeGroup', 'viewToolsGroup'].forEach(id => {
             const el = document.getElementById(id);
@@ -7499,7 +7573,6 @@ const UI = {
             Object.keys(toolBtns).forEach(k =>
                 document.getElementById(toolBtns[k]).classList.toggle('active', k === name));
             document.getElementById('tileTextAlignGroup').style.display = (name === 'text') ? 'flex' : 'none';
-            document.getElementById('tileStampTranspGroup').style.display = (name === 'tilestamp') ? 'flex' : 'none';
             TILE_RENDERER.render();
         };
         document.getElementById('btnTileToolStamp').onclick     = () => setTileTool('stamp');
@@ -7674,7 +7747,6 @@ const UI = {
             const v = parseInt(raw, 16);
             if (!isNaN(v)) TILE_STATE.stampTransparentTile = Math.max(0, Math.min(255, v));
         };
-
         // Import / Export
         document.getElementById('tileImportDatBtn').onclick = () => document.getElementById('tileImportDatFile').click();
         document.getElementById('tileImportDatFile').onchange = function() {
