@@ -322,6 +322,7 @@
                         <li><button class="dropdown-item" id="menuTileReuse">Tile Reuse Analyzer</button></li>
                         <li><button class="dropdown-item" id="menuCompactor">Compactor…</button></li>
                         <li><button class="dropdown-item" id="menuHeatmap">Heatmap</button></li>
+                        <li><button class="dropdown-item" id="menuBitmapToTiles">Bitmap → Tile Editor…</button></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><button class="dropdown-item" id="menuExportCVBasic">Export CVBasic…</button></li>
                     </ul>
@@ -516,6 +517,10 @@
                                 <button class="btn btn-sm btn-outline-primary py-1" id="btnTileToolTileStamp"
                                         title="Stamp — paste captured region onto the map; use Sel first to capture, then Stamp to place">
                                     <span class="material-symbols-outlined">content_paste</span>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary py-1" id="btnTileToolPick"
+                                        title="Pick — click a tile on the map to select it as the active tile, then auto-switches to Draw&#10;Tip: Alt+click works from any tool">
+                                    <span class="material-symbols-outlined">colorize</span>
                                 </button>
                             </div>
 
@@ -1306,15 +1311,35 @@
             <div id="cmpColWarn" class="small text-warning mt-1" style="display:none">
               ⚠ Color tolerance &gt; 0 may merge tiles with different colors — visually lossy.
             </div>
+            <div class="mt-2" style="font-size:0.75rem">
+              <div class="fw-bold text-muted mb-1">Lock rows from compaction <span class="text-muted fw-normal">(kept untouched)</span></div>
+              <div class="d-flex gap-2 flex-wrap">
+                <div class="form-check form-check-inline me-0">
+                  <input class="form-check-input" type="checkbox" id="cmpLockTier1">
+                  <label class="form-check-label" for="cmpLockTier1" style="font-size:0.72rem">Tier 1 (rows 0–7)</label>
+                </div>
+                <div class="form-check form-check-inline me-0">
+                  <input class="form-check-input" type="checkbox" id="cmpLockTier2">
+                  <label class="form-check-label" for="cmpLockTier2" style="font-size:0.72rem">Tier 2 (rows 8–15)</label>
+                </div>
+                <div class="form-check form-check-inline me-0">
+                  <input class="form-check-input" type="checkbox" id="cmpLockTier3">
+                  <label class="form-check-label" for="cmpLockTier3" style="font-size:0.72rem">Tier 3 (rows 16–23)</label>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="col-12 col-md-7">
             <canvas id="compactorCanvas" width="512" height="384"
-              style="width:100%;image-rendering:pixelated;border:2px solid #333;background:#000;"></canvas>
+              style="width:100%;image-rendering:pixelated;border:2px solid #333;background:#000;cursor:crosshair"
+              title="Click or drag to lock/unlock tiles from compaction"></canvas>
           </div>
         </div>
         <div id="cmpStats" class="small text-muted mb-1"></div>
         <div class="small text-muted">
-          Preview shows the post-Apply result. <span style="border:2px solid rgba(255,80,150,0.85);display:inline-block;width:14px;height:14px;vertical-align:middle"></span> Tiles that will be rewritten.
+          Preview shows the post-Apply result.
+          <span style="border:2px solid rgba(255,80,150,0.85);display:inline-block;width:10px;height:10px;vertical-align:middle"></span> Will be rewritten &nbsp;
+          <span style="background:rgba(60,140,255,0.35);border:1px solid rgba(60,140,255,0.8);display:inline-block;width:10px;height:10px;vertical-align:middle"></span> Protected (click/drag on preview to lock tiles)
         </div>
       </div>
       <div class="modal-footer py-1 gap-2">
@@ -1800,6 +1825,7 @@ const TILE_STATE = {
     tileStampPos:       null,   // {tx, ty} cursor hover position for ghost preview
     tileStampDragging:  false,  // true = pointer held, drag-placing the stamp
     _tileStampSnapshot: null,   // Uint8Array(768) name-table snapshot before drag
+    pickHoverPos:       null,   // {tx, ty} tile under cursor when pick tool is active
     _selectStart:       null,   // {tx, ty} anchor corner of selection drag
 };
 
@@ -2357,13 +2383,17 @@ const RENDERER = {
                 }
             }
         }
-        // Tile usage heatmap overlay
+        // Tile usage heatmap overlay — only highlights non-empty reused tiles (count ≥ 2)
         if (STATE.heatmap) {
-            // Build frequency map
+            // Build frequency map; skip all-zero-pattern tiles (empty/transparent cells)
             const freq = new Map();
             for (let cy = 0; cy < 24; cy++) {
                 for (let cx = 0; cx < 32; cx++) {
                     const base = cy * 256 + cx * 8;
+                    // Skip blank tiles: all 8 pattern bytes are zero
+                    let blank = true;
+                    for (let r = 0; r < 8; r++) { if (MODEL.pattern[base + r]) { blank = false; break; } }
+                    if (blank) continue;
                     const key = MODEL.pattern.slice(base, base + 8).join(',') + '|'
                               + MODEL.color.slice(base, base + 8).join(',');
                     freq.set(key, (freq.get(key) || 0) + 1);
@@ -2373,32 +2403,46 @@ const RENDERER = {
             for (let cy = 0; cy < 24; cy++) {
                 for (let cx = 0; cx < 32; cx++) {
                     const base = cy * 256 + cx * 8;
+                    let blank = true;
+                    for (let r = 0; r < 8; r++) { if (MODEL.pattern[base + r]) { blank = false; break; } }
+                    if (blank) continue;
                     const key = MODEL.pattern.slice(base, base + 8).join(',') + '|'
                               + MODEL.color.slice(base, base + 8).join(',');
                     const count = freq.get(key);
-                    let color;
-                    if      (count >= 16) color = 'rgba(0,200,80,0.45)';   // excellent reuse
-                    else if (count >= 5)  color = 'rgba(100,255,60,0.45)'; // good reuse
-                    else if (count >= 2)  color = 'rgba(255,200,0,0.45)';  // low reuse
-                    else                  color = 'rgba(255,60,60,0.5)';   // singleton — wasteful
+                    if (count < 2) continue; // singletons: no overlay
 
-                    let rx = cx * 8, ry = cy * 8, rw = 8, rh = 8;
+                    let rx, ry, rw = 8, rh = 8;
                     if (zoom) {
                         rx = (cx - STATE.zoom.left) * 16;
                         ry = (cy - STATE.zoom.top)  * 16;
                         rw = rh = 16;
                         if (rx < 0 || ry < 0 || rx >= 256 || ry >= 192) continue;
+                    } else {
+                        rx = cx * 8; ry = cy * 8;
                     }
-                    this.gridCtx.fillStyle = color;
+
+                    // Colour: green gradient for reuse level
+                    let r, g, b;
+                    if      (count >= 16) { r=0;   g=220; b=80;  }
+                    else if (count >= 8)  { r=60;  g=255; b=60;  }
+                    else if (count >= 4)  { r=180; g=255; b=0;   }
+                    else                  { r=255; g=200; b=0;   }
+
+                    this.gridCtx.fillStyle = `rgba(${r},${g},${b},0.38)`;
                     this.gridCtx.fillRect(rx, ry, rw, rh);
-                    // Usage count badge (top-right corner)
-                    this.gridCtx.fillStyle = 'rgba(0,0,0,0.7)';
-                    this.gridCtx.fillRect(rx + rw - (zoom ? 10 : 6), ry, zoom ? 10 : 6, zoom ? 9 : 6);
-                    this.gridCtx.fillStyle = '#fff';
-                    this.gridCtx.font = `bold ${zoom ? 8 : 5}px monospace`;
-                    this.gridCtx.textAlign = 'right';
-                    this.gridCtx.fillText(count, rx + rw - 1, ry + (zoom ? 8 : 5));
-                    this.gridCtx.textAlign = 'left';
+
+                    // Count badge in bottom-right corner — zoom only (8px tiles are too small)
+                    if (zoom) {
+                        this.gridCtx.fillStyle = `rgba(${r},${g},${b},0.85)`;
+                        this.gridCtx.fillRect(rx + rw - 12, ry + rh - 9, 12, 9);
+                        this.gridCtx.fillStyle = '#000';
+                        this.gridCtx.font = 'bold 8px monospace';
+                        this.gridCtx.textAlign = 'right';
+                        this.gridCtx.textBaseline = 'bottom';
+                        this.gridCtx.fillText(count, rx + rw - 1, ry + rh - 1);
+                        this.gridCtx.textAlign = 'left';
+                        this.gridCtx.textBaseline = 'alphabetic';
+                    }
                 }
             }
         }
@@ -2722,6 +2766,20 @@ const TILE_RENDERER = {
             ctx.setLineDash([3, 2]);
             ctx.strokeRect(toX(stx) + 0.5, toY(sty) + 0.5, stamp.w * 8 * zs, stamp.h * 8 * zs);
             ctx.setLineDash([]);
+        }
+        // Pick tool hover — gold outline around hovered tile (no colour change)
+        if (TILE_STATE.tool === 'pick' && TILE_STATE.pickHoverPos) {
+            const {tx: px, ty: py} = TILE_STATE.pickHoverPos;
+            const ctx = RENDERER.ctx;
+            const x0 = toX(px), y0 = toY(py), sz = 8 * zs;
+            // Outer bright stroke
+            ctx.strokeStyle = 'rgba(255,220,0,0.95)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x0 + 1, y0 + 1, sz - 2, sz - 2);
+            // Inner hairline for contrast on dark tiles
+            ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x0 + 2.5, y0 + 2.5, sz - 5, sz - 5);
         }
     },
 
@@ -4732,6 +4790,69 @@ const IO = {
             (extraLoaded ? ` + ${extraLoaded} extra screen(s)` : ''));
     },
 
+    // Convert bitmap canvas → Tile Editor (deduplicate 32×24 tiles into a charset)
+    bitmapToTiles: function() {
+        // Pass 1: count all unique tiles (no limit)
+        const fullMap = new Map(); // key → {pat, col}
+        for (let cy = 0; cy < 24; cy++) {
+            for (let cx = 0; cx < 32; cx++) {
+                const base = cy * 256 + cx * 8;
+                const pat = MODEL.pattern.slice(base, base + 8);
+                const col = MODEL.color.slice(base, base + 8);
+                const key = pat.join(',') + '|' + col.join(',');
+                if (!fullMap.has(key)) fullMap.set(key, { pat, col });
+            }
+        }
+        if (fullMap.size > 256) {
+            alert(`Cannot convert: ${fullMap.size} unique tiles found, maximum is 256.\n\nTip: use Compactor to reduce the number of unique tiles first.`);
+            return;
+        }
+
+        // Assign stable indices (insertion order)
+        const keyToIdx = new Map();
+        let i = 0;
+        for (const [key] of fullMap) keyToIdx.set(key, i++);
+
+        // Pass 2: build name table
+        const nameTable = new Uint8Array(768);
+        for (let cy = 0; cy < 24; cy++) {
+            for (let cx = 0; cx < 32; cx++) {
+                const base = cy * 256 + cx * 8;
+                const key = MODEL.pattern.slice(base, base+8).join(',') + '|' + MODEL.color.slice(base, base+8).join(',');
+                nameTable[cy * 32 + cx] = keyToIdx.get(key);
+            }
+        }
+
+        // Populate MODEL.tiles in GM2 mode
+        MODEL.tiles.patterns.fill(0);
+        MODEL.tiles.colorRows.fill(0);
+        MODEL.tiles.colorTable.fill(0);
+        for (const [key, { pat, col }] of fullMap) {
+            const idx = keyToIdx.get(key);
+            MODEL.tiles.patterns.set(pat, idx * 8);
+            MODEL.tiles.colorRows.set(col, idx * 8);
+        }
+        // Derive GM1 colorTable from first row of each 8-tile group (for compatibility)
+        for (let g = 0; g < 32; g++) MODEL.tiles.colorTable[g] = MODEL.tiles.colorRows[g * 64];
+
+        MODEL.tiles.nameTables[0].set(nameTable);
+        MODEL.tiles.currentTable = 0;
+        MODEL.tiles.mode = 2;   // GM2 — per-row colour
+        MODEL.tiles.selected = 0;
+
+        HISTORY.push();
+
+        const n = fullMap.size;
+        UI.setStatus(`Bitmap → Tile Editor: ${n} unique tile${n !== 1 ? 's' : ''} — charset loaded, Screen 1 ready in GM2 mode`);
+
+        if (TILE_STATE.active) {
+            UI.updateTileModeBar();
+            TILE_RENDERER.render(); TILE_RENDERER.renderCharset(); TILE_RENDERER.renderCharEditor();
+        } else {
+            UI.enterTileMode();
+        }
+    },
+
     // Export MODEL.tiles as ICVGM-compatible .dat (no deduplication needed)
     exportDATfromTiles: function() {
         const t = MODEL.tiles;
@@ -5069,18 +5190,20 @@ const COMPACTOR = {
     // ── Draw 512×384 preview on compactorCanvas ─────────────────────────────
     // Shows the POST-APPLY result: every tile is drawn with its canonical's pixels.
     // Tiles that will actually change get a subtle pink border so you can spot them.
-    drawPreview: function(groups) {
+    drawPreview: function(groups, lockedSet) {
         const canvas = document.getElementById('compactorCanvas');
         const ctx = canvas.getContext('2d');
         const palette = CONFIG.PALETTE;
+        const isLocked = (cx, cy) => lockedSet && lockedSet.has(cx + cy * 32);
 
         // 1. Build tileIndex → representative parsed key
         const posRep = new Map(); // tileIndex -> {pat, col}
-        const willChange = new Set(); // tileIndex of tiles whose bytes differ from their rep
+        const willChange = new Set(); // tileIndex of tiles whose bytes differ from their rep (excl. locked)
         for (const g of groups) {
             const rep = this.parseKey(g.representative);
             for (const { cx, cy } of g.positions) {
                 posRep.set(cx + cy * 32, rep);
+                if (isLocked(cx, cy)) continue; // locked — won't be changed
                 const base = cy * 256 + cx * 8;
                 for (let r = 0; r < 8; r++) {
                     if (MODEL.pattern[base+r] !== rep.pat[r] || MODEL.color[base+r] !== rep.col[r]) {
@@ -5095,7 +5218,8 @@ const COMPACTOR = {
         const dd = img.data;
         for (let yT = 0; yT < 24; yT++) {
             for (let xT = 0; xT < 32; xT++) {
-                const rep = posRep.get(xT + yT * 32);
+                // Locked tiles: always show current pixels (they won't be changed)
+                const rep = isLocked(xT, yT) ? null : posRep.get(xT + yT * 32);
                 for (let row = 0; row < 8; row++) {
                     const pB = rep ? rep.pat[row] : MODEL.pattern[yT * 256 + xT * 8 + row];
                     const cB = rep ? rep.col[row] : MODEL.color[yT * 256 + xT * 8 + row];
@@ -5130,14 +5254,32 @@ const COMPACTOR = {
         ctx.strokeStyle = 'rgba(255,255,0,0.4)';
         ctx.lineWidth = 2;
         [8, 16].forEach(y => { ctx.beginPath(); ctx.moveTo(0,y*16); ctx.lineTo(512,y*16); ctx.stroke(); });
+
+        // 5. Blue overlay on individually locked tiles
+        if (lockedSet && lockedSet.size) {
+            ctx.fillStyle = 'rgba(60,140,255,0.35)';
+            for (const idx of lockedSet) {
+                const lx = idx % 32, ly = Math.floor(idx / 32);
+                ctx.fillRect(lx * 16, ly * 16, 16, 16);
+            }
+            ctx.strokeStyle = 'rgba(60,140,255,0.75)';
+            ctx.lineWidth = 1;
+            for (const idx of lockedSet) {
+                const lx = idx % 32, ly = Math.floor(idx / 32);
+                ctx.strokeRect(lx * 16 + 0.5, ly * 16 + 0.5, 15, 15);
+            }
+        }
     },
 
     // ── Apply groups to MODEL (rewrite merged tiles to their canonical) ──────
-    apply: function(groups) {
+    apply: function(groups, lockedSet) {
+        // lockedSet: Set of (cx + cy*32) position indices that must not be rewritten
+        const isLocked = (cx, cy) => lockedSet && lockedSet.has(cx + cy * 32);
         let changed = false;
         for (const g of groups) {
             const rep = this.parseKey(g.representative);
             for (const { cx, cy } of g.positions) {
+                if (isLocked(cx, cy)) continue; // protected tile — leave pixels untouched
                 const base = cy * 256 + cx * 8;
                 for (let r = 0; r < 8; r++) {
                     if (MODEL.pattern[base+r] !== rep.pat[r]) { MODEL.pattern[base+r] = rep.pat[r]; changed = true; }
@@ -5155,6 +5297,24 @@ const COMPACTOR = {
         const modal = new bootstrap.Modal(document.getElementById('compactorModal'));
         let _raf = null;
 
+        // Lock state: Set of (cx + cy*32) position indices protected from compaction
+        const lockedSet = new Set();
+
+        // True iff every tile in tier t (0/1/2) is locked
+        const isTierFullyLocked = (t) => {
+            for (let cy = t * 8; cy < t * 8 + 8; cy++)
+                for (let cx = 0; cx < 32; cx++)
+                    if (!lockedSet.has(cx + cy * 32)) return false;
+            return true;
+        };
+
+        // Sync tier checkboxes to reflect current lockedSet state
+        const syncTierCheckboxes = () => {
+            [0, 1, 2].forEach(t => {
+                document.getElementById('cmpLockTier' + (t + 1)).checked = isTierFullyLocked(t);
+            });
+        };
+
         const refresh = () => {
             const patTol = parseInt(document.getElementById('cmpPatSlider').value, 10);
             const colTol = parseInt(document.getElementById('cmpColSlider').value, 10);
@@ -5164,11 +5324,12 @@ const COMPACTOR = {
 
             const { groups, invSize } = self.compact(patTol, colTol);
 
-            // Count canvas tiles that will actually be rewritten
+            // Count canvas tiles that will actually be rewritten (excluding locked)
             let willChange = 0;
             for (const g of groups) {
                 const rep = self.parseKey(g.representative);
                 for (const { cx, cy } of g.positions) {
+                    if (lockedSet.has(cx + cy * 32)) continue;
                     const base = cy * 256 + cx * 8;
                     for (let r = 0; r < 8; r++) {
                         if (MODEL.pattern[base+r] !== rep.pat[r] || MODEL.color[base+r] !== rep.col[r]) {
@@ -5182,9 +5343,10 @@ const COMPACTOR = {
             document.getElementById('cmpStats').textContent =
                 'Before: ' + invSize + ' unique tiles \u2192 After: ' + groups.length + ' unique groups' +
                 (slotsFreed > 0 ? ' (\u2212' + slotsFreed + ' freed)' : '') +
-                (willChange > 0 ? ' \u00b7 ' + willChange + ' canvas tiles will be rewritten' : ' \u00b7 no canvas changes');
+                (willChange > 0 ? ' \u00b7 ' + willChange + ' tiles will be rewritten' : ' \u00b7 no canvas changes') +
+                (lockedSet.size ? ' \u00b7 \uD83D\uDD12 ' + lockedSet.size + ' tile' + (lockedSet.size !== 1 ? 's' : '') + ' protected' : '');
 
-            self.drawPreview(groups);
+            self.drawPreview(groups, lockedSet);
             document.getElementById('btnCmpApply')._cmpGroups = groups;
         };
 
@@ -5193,6 +5355,7 @@ const COMPACTOR = {
         document.getElementById('cmpPatPct').textContent = '0%';
         document.getElementById('cmpColPct').textContent = '0%';
         document.getElementById('cmpColWarn').style.display = 'none';
+        [1, 2, 3].forEach(n => { document.getElementById('cmpLockTier' + n).checked = false; });
 
         const onInput = () => {
             if (_raf) cancelAnimationFrame(_raf);
@@ -5201,14 +5364,58 @@ const COMPACTOR = {
         document.getElementById('cmpPatSlider').oninput = onInput;
         document.getElementById('cmpColSlider').oninput = onInput;
 
+        // Tier checkboxes — lock or unlock all 256 tiles in a tier at once
+        [0, 1, 2].forEach(t => {
+            document.getElementById('cmpLockTier' + (t + 1)).onchange = e => {
+                for (let cy = t * 8; cy < t * 8 + 8; cy++)
+                    for (let cx = 0; cx < 32; cx++) {
+                        if (e.target.checked) lockedSet.add(cx + cy * 32);
+                        else                  lockedSet.delete(cx + cy * 32);
+                    }
+                onInput();
+            };
+        });
+
+        // Canvas click/drag — toggle individual tile locks
+        const canvas = document.getElementById('compactorCanvas');
+        const getCanvasTile = e => {
+            const r = canvas.getBoundingClientRect();
+            const cx = Math.floor((e.clientX - r.left) / r.width  * 32);
+            const cy = Math.floor((e.clientY - r.top)  / r.height * 24);
+            return (cx >= 0 && cx < 32 && cy >= 0 && cy < 24) ? { cx, cy } : null;
+        };
+        let _dragLocking = null; // true = painting locks, false = painting unlocks
+
+        canvas.onmousedown = e => {
+            const tile = getCanvasTile(e);
+            if (!tile) return;
+            const idx = tile.cx + tile.cy * 32;
+            _dragLocking = !lockedSet.has(idx);
+            if (_dragLocking) lockedSet.add(idx); else lockedSet.delete(idx);
+            syncTierCheckboxes();
+            onInput();
+            e.preventDefault();
+        };
+        canvas.onmousemove = e => {
+            if (_dragLocking === null || e.buttons === 0) { _dragLocking = null; return; }
+            const tile = getCanvasTile(e);
+            if (!tile) return;
+            const idx = tile.cx + tile.cy * 32;
+            if (_dragLocking && !lockedSet.has(idx))       { lockedSet.add(idx);    syncTierCheckboxes(); onInput(); }
+            else if (!_dragLocking && lockedSet.has(idx))  { lockedSet.delete(idx); syncTierCheckboxes(); onInput(); }
+        };
+        canvas.onmouseup    = () => { _dragLocking = null; };
+        canvas.onmouseleave = () => { _dragLocking = null; };
+
         document.getElementById('btnCmpApply').onclick = () => {
             const groups = document.getElementById('btnCmpApply')._cmpGroups;
             if (groups) {
-                self.apply(groups);
+                self.apply(groups, lockedSet);
                 bootstrap.Modal.getInstance(document.getElementById('compactorModal')).hide();
                 const patTol = parseInt(document.getElementById('cmpPatSlider').value, 10);
                 const colTol = parseInt(document.getElementById('cmpColSlider').value, 10);
-                UI.setStatus('Compactor applied \u00b7 pat ' + patTol + '% col ' + colTol + '%');
+                const lockMsg = lockedSet.size ? ' \u00b7 ' + lockedSet.size + ' tile' + (lockedSet.size !== 1 ? 's' : '') + ' protected' : '';
+                UI.setStatus('Compactor applied \u00b7 pat ' + patTol + '% col ' + colTol + '%' + lockMsg);
                 if (STATE.heatmap) RENDERER.drawGrid();
             }
         };
@@ -5269,6 +5476,22 @@ const INPUT = {
                 const cx = Math.floor((e.clientX - rect.left) * scaleX / 8);
                 const cy = Math.floor((e.clientY - rect.top)  * scaleY / 8);
                 if (cx >= 0 && cx < 32 && cy >= 0 && cy < 24) {
+                    // Pick tool or Alt+click: read tile index, select it, no draw
+                    if (TILE_STATE.tool === 'pick' || e.altKey) {
+                        const pickedIdx = MODEL.tiles.name[cy * 32 + cx];
+                        const hexIdx = '$' + pickedIdx.toString(16).toUpperCase().padStart(2, '0');
+                        MODEL.tiles.selected = pickedIdx;
+                        UI.updateTileModeBar();
+                        TILE_RENDERER.renderCharset();
+                        TILE_RENDERER.renderCharEditor();
+                        if (TILE_STATE.tool === 'pick') {
+                            document.getElementById('btnTileToolStamp').click();
+                            UI.setStatus('PICK \u2192 tile ' + hexIdx + ' \u2014 Draw tool ready');
+                        } else {
+                            UI.setStatus('PICK \u2192 tile ' + hexIdx + ' (Alt+click)');
+                        }
+                        return;
+                    }
                     if (TILE_STATE.tool === 'text') {
                         if (TILE_STATE.textCursor && TILE_STATE.textLines) UI.commitTileText();
                         TILE_STATE.textCursor = { tx: cx, ty: cy, caretLine: 0, caretCol: 0 };
@@ -5524,6 +5747,12 @@ const INPUT = {
                         MODEL.tiles.name.set(TILE_STATE._tileStampSnapshot);
                         _placeTileStamp(cx, cy);
                     }
+                    TILE_RENDERER.render();
+                    return;
+                } else if (TILE_STATE.tool === 'pick') {
+                    // Update hover position for the gold outline — no drawing
+                    TILE_STATE.pickHoverPos = (cx >= 0 && cx < 32 && cy >= 0 && cy < 24)
+                        ? { tx: cx, ty: cy } : null;
                     TILE_RENDERER.render();
                     return;
                 } else {
@@ -6882,6 +7111,7 @@ const UI = {
             document.getElementById("menuHeatmap").textContent = STATE.heatmap ? "Heatmap \u2713" : "Heatmap";
             RENDERER.drawGrid();
         };
+        document.getElementById("menuBitmapToTiles").onclick = () => IO.bitmapToTiles();
         document.getElementById("menuExportCVBasic").onclick = () => IO.showCVBasicModal();
 
         // Stamp menu
@@ -7566,10 +7796,12 @@ const UI = {
         const setTileTool = (name) => {
             if (TILE_STATE.textCursor && TILE_STATE.textLines) UI.commitTileText();
             TILE_STATE.tool = name;
-            TILE_STATE.textCursor = null;
-            TILE_STATE.textLines  = null;
+            TILE_STATE.textCursor  = null;
+            TILE_STATE.textLines   = null;
+            TILE_STATE.pickHoverPos = null; // clear hover when switching away from pick
             const toolBtns = { stamp: 'btnTileToolStamp', text: 'btnTileToolText',
-                               select: 'btnTileToolSelect', tilestamp: 'btnTileToolTileStamp' };
+                               select: 'btnTileToolSelect', tilestamp: 'btnTileToolTileStamp',
+                               pick: 'btnTileToolPick' };
             Object.keys(toolBtns).forEach(k =>
                 document.getElementById(toolBtns[k]).classList.toggle('active', k === name));
             document.getElementById('tileTextAlignGroup').style.display = (name === 'text') ? 'flex' : 'none';
@@ -7578,6 +7810,7 @@ const UI = {
         document.getElementById('btnTileToolStamp').onclick     = () => setTileTool('stamp');
         document.getElementById('btnTileToolText').onclick      = () => setTileTool('text');
         document.getElementById('btnTileToolSelect').onclick    = () => setTileTool('select');
+        document.getElementById('btnTileToolPick').onclick      = () => setTileTool('pick');
         // TileStamp: auto-capture current selection (if any) then activate tilestamp tool
         document.getElementById('btnTileToolTileStamp').onclick = () => {
             if (TILE_STATE.selection) {
