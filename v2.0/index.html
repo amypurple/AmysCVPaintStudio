@@ -311,9 +311,9 @@
                     <ul class="dropdown-menu shadow">
                         <li><a class="dropdown-item" id="menuTileEditor" href="#">Tile Editor…</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" id="menuTileImportDat" href="#">Import .dat into Tile Editor…</a></li>
-                        <li><a class="dropdown-item" id="menuTileExportDat" href="#">Export Tile Editor as .dat</a></li>
-                        <li><a class="dropdown-item" id="menuTileToBitmap" href="#">Flatten Tiles → Bitmap</a></li>
+                        <li><a class="dropdown-item disabled" id="menuTileImportDat" href="#">Import .dat into Tile Editor…</a></li>
+                        <li><a class="dropdown-item disabled" id="menuTileExportDat" href="#">Export Tile Editor as .dat</a></li>
+                        <li><a class="dropdown-item disabled" id="menuTileToBitmap" href="#">Flatten Tiles → Bitmap</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
@@ -5325,23 +5325,34 @@ const COMPACTOR = {
             const { groups, invSize } = self.compact(patTol, colTol);
 
             // Count canvas tiles that will actually be rewritten (excluding locked)
+            // Also compute the effective unique count after apply (locked tiles keep their own pattern)
             let willChange = 0;
+            const effectivePatterns = new Set();
             for (const g of groups) {
                 const rep = self.parseKey(g.representative);
+                let hasNonLocked = false;
                 for (const { cx, cy } of g.positions) {
-                    if (lockedSet.has(cx + cy * 32)) continue;
                     const base = cy * 256 + cx * 8;
-                    for (let r = 0; r < 8; r++) {
-                        if (MODEL.pattern[base+r] !== rep.pat[r] || MODEL.color[base+r] !== rep.col[r]) {
-                            willChange++; break;
+                    if (lockedSet.has(cx + cy * 32)) {
+                        // Locked: stays as-is — add its current pattern as a unique entry
+                        effectivePatterns.add(MODEL.pattern.slice(base, base+8).join(',') + '|'
+                                            + MODEL.color.slice(base, base+8).join(','));
+                    } else {
+                        hasNonLocked = true;
+                        for (let r = 0; r < 8; r++) {
+                            if (MODEL.pattern[base+r] !== rep.pat[r] || MODEL.color[base+r] !== rep.col[r]) {
+                                willChange++; break;
+                            }
                         }
                     }
                 }
+                // The representative pattern will appear on canvas if any position is non-locked
+                if (hasNonLocked) effectivePatterns.add(g.representative);
             }
-
-            const slotsFreed = invSize - groups.length;
+            const effectiveUnique = effectivePatterns.size;
+            const slotsFreed = invSize - effectiveUnique;
             document.getElementById('cmpStats').textContent =
-                'Before: ' + invSize + ' unique tiles \u2192 After: ' + groups.length + ' unique groups' +
+                'Before: ' + invSize + ' unique tiles \u2192 After: ' + effectiveUnique + ' unique' +
                 (slotsFreed > 0 ? ' (\u2212' + slotsFreed + ' freed)' : '') +
                 (willChange > 0 ? ' \u00b7 ' + willChange + ' tiles will be rewritten' : ' \u00b7 no canvas changes') +
                 (lockedSet.size ? ' \u00b7 \uD83D\uDD12 ' + lockedSet.size + ' tile' + (lockedSet.size !== 1 ? 's' : '') + ' protected' : '');
@@ -5481,7 +5492,9 @@ const INPUT = {
                         const pickedIdx = MODEL.tiles.name[cy * 32 + cx];
                         const hexIdx = '$' + pickedIdx.toString(16).toUpperCase().padStart(2, '0');
                         MODEL.tiles.selected = pickedIdx;
+                        TILE_STATE.editRow = 0;
                         UI.updateTileModeBar();
+                        UI.updateTileColorPanel();
                         TILE_RENDERER.renderCharset();
                         TILE_RENDERER.renderCharEditor();
                         if (TILE_STATE.tool === 'pick') {
@@ -7486,6 +7499,10 @@ const UI = {
             const el = document.getElementById(id);
             if (el) el.style.setProperty('display', 'none', 'important');
         });
+        // Masquer le strip palette+Remap (bitmap only — tile mode a son propre color picker)
+        document.getElementById('canvasPaletteStrip').style.display = 'none';
+        ['menuTileImportDat','menuTileExportDat','menuTileToBitmap'].forEach(id =>
+            document.getElementById(id).classList.remove('disabled'));
         this.updateTileModeBar();
         this.updateTileColorPanel();
         TILE_RENDERER.render();
@@ -7514,6 +7531,10 @@ const UI = {
             const el = document.getElementById(id);
             if (el) el.style.removeProperty('display');
         });
+        // Restaurer le strip palette+Remap
+        document.getElementById('canvasPaletteStrip').style.display = '';
+        ['menuTileImportDat','menuTileExportDat','menuTileToBitmap'].forEach(id =>
+            document.getElementById(id).classList.add('disabled'));
         // brushOptionsPanel reste caché sauf si l'outil brosse est actif
         document.getElementById('brushOptionsPanel').style.setProperty('display', STATE.tool === 'brush' ? '' : 'none', 'important');
         // textAlignGroup selon l'outil bitmap actif
@@ -8038,7 +8059,7 @@ const UI = {
         document.getElementById('menuTileEditor').addEventListener('click', e => { e.preventDefault(); UI.enterTileMode(); });
         document.getElementById('menuTileImportDat').addEventListener('click', e => { e.preventDefault(); document.getElementById('tileImportDatFile').click(); });
         document.getElementById('menuTileExportDat').addEventListener('click', e => { e.preventDefault(); IO.exportDATfromTiles(); });
-        document.getElementById('menuTileToBitmap').addEventListener('click', e => { e.preventDefault(); IO.tilesToBitmap(); });
+        document.getElementById('menuTileToBitmap').addEventListener('click', e => { e.preventDefault(); IO.tilesToBitmap(); UI.exitTileMode(); });
     },
 
     moveSpriteBy: function(dx, dy) {
