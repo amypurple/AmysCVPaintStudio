@@ -522,6 +522,10 @@
                                         title="Pick — click a tile on the map to select it as the active tile, then auto-switches to Draw&#10;Tip: Alt+click works from any tool">
                                     <span class="material-symbols-outlined">colorize</span>
                                 </button>
+                                <button class="btn btn-sm btn-outline-primary py-1" id="btnTileToolFill"
+                                        title="Fill — flood-fill all connected identical tiles with the selected tile">
+                                    <span class="material-symbols-outlined">format_color_fill</span>
+                                </button>
                             </div>
 
                             <!-- Blank tile — used by Ctrl+X (cut) and stamp paste Skip -->
@@ -5499,6 +5503,29 @@ const INPUT = {
                         TILE_STATE._selectStart = { tx: cx, ty: cy };
                         TILE_STATE.isDrawing = true;
                         c.setPointerCapture(e.pointerId);
+                    } else if (TILE_STATE.tool === 'fill') {
+                        // Flood fill: replace all 4-connected tiles matching target with selected
+                        const fillWith = MODEL.tiles.selected;
+                        const target   = MODEL.tiles.name[cy * 32 + cx];
+                        if (target !== fillWith) {
+                            const stack = [cy * 32 + cx];
+                            const visited = new Uint8Array(768);
+                            while (stack.length) {
+                                const idx = stack.pop();
+                                if (visited[idx] || MODEL.tiles.name[idx] !== target) continue;
+                                visited[idx] = 1;
+                                MODEL.tiles.name[idx] = fillWith;
+                                const x = idx % 32, y = (idx - x) / 32;
+                                if (x > 0)  stack.push(idx - 1);
+                                if (x < 31) stack.push(idx + 1);
+                                if (y > 0)  stack.push(idx - 32);
+                                if (y < 23) stack.push(idx + 32);
+                            }
+                            TILE_RENDERER.render();
+                            HISTORY.push();
+                            const hex = '$' + fillWith.toString(16).toUpperCase().padStart(2, '0');
+                            UI.setStatus('FILL \u2192 tile ' + hex);
+                        }
                     } else if (TILE_STATE.tool === 'tilestamp') {
                         // Place the stamp and begin drag-paint
                         if (TILE_STATE.tileStamp) {
@@ -7797,7 +7824,7 @@ const UI = {
             TILE_STATE.pickHoverPos = null; // clear hover when switching away from pick
             const toolBtns = { stamp: 'btnTileToolStamp', text: 'btnTileToolText',
                                select: 'btnTileToolSelect', tilestamp: 'btnTileToolTileStamp',
-                               pick: 'btnTileToolPick' };
+                               pick: 'btnTileToolPick', fill: 'btnTileToolFill' };
             Object.keys(toolBtns).forEach(k =>
                 document.getElementById(toolBtns[k]).classList.toggle('active', k === name));
             document.getElementById('tileTextAlignGroup').style.display = (name === 'text') ? 'flex' : 'none';
@@ -7807,6 +7834,7 @@ const UI = {
         document.getElementById('btnTileToolText').onclick      = () => setTileTool('text');
         document.getElementById('btnTileToolSelect').onclick    = () => setTileTool('select');
         document.getElementById('btnTileToolPick').onclick      = () => setTileTool('pick');
+        document.getElementById('btnTileToolFill').onclick      = () => setTileTool('fill');
         // TileStamp: auto-capture current selection (if any) then activate tilestamp tool
         document.getElementById('btnTileToolTileStamp').onclick = () => {
             if (TILE_STATE.selection) {
