@@ -2767,19 +2767,15 @@ const TILE_RENDERER = {
             ctx.strokeRect(toX(stx) + 0.5, toY(sty) + 0.5, stamp.w * 8 * zs, stamp.h * 8 * zs);
             ctx.setLineDash([]);
         }
-        // Pick tool hover — gold outline around hovered tile (no colour change)
+        // Pick tool hover — subtle dashed outline around hovered tile
         if (TILE_STATE.tool === 'pick' && TILE_STATE.pickHoverPos) {
             const {tx: px, ty: py} = TILE_STATE.pickHoverPos;
             const ctx = RENDERER.ctx;
-            const x0 = toX(px), y0 = toY(py), sz = 8 * zs;
-            // Outer bright stroke
-            ctx.strokeStyle = 'rgba(255,220,0,0.95)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x0 + 1, y0 + 1, sz - 2, sz - 2);
-            // Inner hairline for contrast on dark tiles
-            ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+            ctx.strokeStyle = 'rgba(255,220,0,0.6)';
             ctx.lineWidth = 1;
-            ctx.strokeRect(x0 + 2.5, y0 + 2.5, sz - 5, sz - 5);
+            ctx.setLineDash([2, 2]);
+            ctx.strokeRect(toX(px) + 0.5, toY(py) + 0.5, 8 * zs - 1, 8 * zs - 1);
+            ctx.setLineDash([]);
         }
     },
 
