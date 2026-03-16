@@ -3428,6 +3428,17 @@ const IO = {
                         MODEL.animation.keyframes = [];
                         MODEL.animation.currentFrame = -1;
                     }
+                    // Restore tile mode data (version 2+ projects)
+                    if (proj.tileMode) {
+                        const tm = proj.tileMode;
+                        if (tm.mode !== undefined) MODEL.tiles.mode = tm.mode;
+                        if (tm.currentTable !== undefined) MODEL.tiles.currentTable = tm.currentTable;
+                        if (tm.nameTables) MODEL.tiles.nameTables.forEach((t, i) => { if (tm.nameTables[i]) t.set(tm.nameTables[i]); });
+                        if (tm.patterns)   MODEL.tiles.patterns.set(tm.patterns);
+                        if (tm.colorTable) MODEL.tiles.colorTable.set(tm.colorTable);
+                        if (tm.colorRows)  MODEL.tiles.colorRows.set(tm.colorRows);
+                        if (tm.active) { UI.updateSpriteUI(); HISTORY.push(); UI.enterTileMode(); UI.setStatus("LOADED PROJECT (tile mode)"); return; }
+                    }
                     UI.updateSpriteUI();
                     UI.setStatus("LOADED PROJECT" + (MODEL.animation.keyframes.length > 0 ? ` (${MODEL.animation.keyframes.length} anim frames)` : "")); HISTORY.push(); RENDERER.render();
                 } catch(err) { UI.setStatus("ERROR: " + err.message); console.error(err); }
@@ -6377,6 +6388,15 @@ const INPUT = {
             if(ctrl && k==='v') { e.preventDefault(); this.triggerPaste(); return; }
             if(ctrl && k==='x') { e.preventDefault(); this.triggerCut(); return; }
 
+            // In tile mode: redirect view shortcuts to tile-side buttons; block all bitmap-only shortcuts
+            if (TILE_STATE.active) {
+                if (k === 'z' && !ctrl) document.getElementById('btnTileZoom').click();
+                if (k === 'x' && !ctrl) document.getElementById('btnTileGrid').click();
+                if (k === 'h' && !ctrl && !e.shiftKey) document.getElementById('btnTileCrosshair').click();
+                if (e.key === " ") { e.preventDefault(); STATE.spaceHeld = true; }
+                return; // block bitmap tool shortcuts, mirror, fill-outline, animation record, etc.
+            }
+
             const map = { p:"toolPen", e:"toolEraser", a:"toolBrush", r:"toolRect", g:"toolRectGrid", l:"toolLine", c:"toolCurve", o:"toolCircle", s:"toolSelect", m:"toolSprite", k:"toolStamp", b:"toolFill", t:"toolText" };
             if(map[k] && document.getElementById(map[k]).style.display !== "none") document.getElementById(map[k]).click();
 
@@ -6939,7 +6959,7 @@ const UI = {
         document.getElementById("menuExportDat").onclick = () => IO.exportDAT();
         document.getElementById("menuSaveCvproj").onclick = () => {
             const proj = {
-                version: 1,
+                version: 2,
                 pattern: Array.from(MODEL.pattern),
                 color: Array.from(MODEL.color),
                 sprites: {
@@ -6948,6 +6968,15 @@ const UI = {
                     size16x16: MODEL.sprites.size16x16,
                     attributes: Array.from(MODEL.sprites.attributes),
                     patterns: Array.from(MODEL.sprites.patterns)
+                },
+                tileMode: {
+                    active:       TILE_STATE.active,
+                    currentTable: MODEL.tiles.currentTable,
+                    mode:         MODEL.tiles.mode,
+                    nameTables:   MODEL.tiles.nameTables.map(t => Array.from(t)),
+                    patterns:     Array.from(MODEL.tiles.patterns),
+                    colorTable:   Array.from(MODEL.tiles.colorTable),
+                    colorRows:    Array.from(MODEL.tiles.colorRows),
                 }
             };
             if (MODEL.animation.keyframes.length > 0) {
@@ -7503,6 +7532,11 @@ const UI = {
         document.getElementById('canvasPaletteStrip').style.display = 'none';
         ['menuTileImportDat','menuTileExportDat','menuTileToBitmap'].forEach(id =>
             document.getElementById(id).classList.remove('disabled'));
+        // Disable bitmap-only menu items in tile mode
+        document.getElementById('menuSpritesDropdown').style.pointerEvents = 'none';
+        document.getElementById('menuSpritesDropdown').style.opacity = '0.5';
+        document.getElementById('menuBitmapToTiles').classList.add('disabled');
+        document.getElementById('menuTileEditor').classList.add('disabled');
         this.updateTileModeBar();
         this.updateTileColorPanel();
         TILE_RENDERER.render();
@@ -7535,6 +7569,11 @@ const UI = {
         document.getElementById('canvasPaletteStrip').style.display = '';
         ['menuTileImportDat','menuTileExportDat','menuTileToBitmap'].forEach(id =>
             document.getElementById(id).classList.add('disabled'));
+        // Restore bitmap-only menu items
+        document.getElementById('menuSpritesDropdown').style.pointerEvents = '';
+        document.getElementById('menuSpritesDropdown').style.opacity = '';
+        document.getElementById('menuBitmapToTiles').classList.remove('disabled');
+        document.getElementById('menuTileEditor').classList.remove('disabled');
         // brushOptionsPanel reste caché sauf si l'outil brosse est actif
         document.getElementById('brushOptionsPanel').style.setProperty('display', STATE.tool === 'brush' ? '' : 'none', 'important');
         // textAlignGroup selon l'outil bitmap actif
