@@ -7533,8 +7533,6 @@ const UI = {
         ['menuTileImportDat','menuTileExportDat','menuTileToBitmap'].forEach(id =>
             document.getElementById(id).classList.remove('disabled'));
         // Disable bitmap-only menu items in tile mode
-        document.getElementById('menuSpritesDropdown').style.pointerEvents = 'none';
-        document.getElementById('menuSpritesDropdown').style.opacity = '0.5';
         document.getElementById('menuBitmapToTiles').classList.add('disabled');
         document.getElementById('menuTileEditor').classList.add('disabled');
         this.updateTileModeBar();
@@ -7570,8 +7568,6 @@ const UI = {
         ['menuTileImportDat','menuTileExportDat','menuTileToBitmap'].forEach(id =>
             document.getElementById(id).classList.add('disabled'));
         // Restore bitmap-only menu items
-        document.getElementById('menuSpritesDropdown').style.pointerEvents = '';
-        document.getElementById('menuSpritesDropdown').style.opacity = '';
         document.getElementById('menuBitmapToTiles').classList.remove('disabled');
         document.getElementById('menuTileEditor').classList.remove('disabled');
         // brushOptionsPanel reste caché sauf si l'outil brosse est actif
