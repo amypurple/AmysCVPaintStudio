@@ -275,7 +275,7 @@
                         <li><button class="dropdown-item" id="menuLoadRef">Load Reference Image…</button></li>
                     </ul>
                 </li>
-                <li class="nav-item dropdown">
+                <li class="nav-item dropdown" id="menuStampDropdown">
                     <a class="nav-link dropdown-toggle py-1" href="#" data-bs-toggle="dropdown">Stamp</a>
                     <ul class="dropdown-menu shadow">
                         <li><button class="dropdown-item" id="menuExportStamp">Export Stamp (.cvstamp)…</button></li>
@@ -7535,6 +7535,13 @@ const UI = {
         // Disable bitmap-only menu items in tile mode
         document.getElementById('menuBitmapToTiles').classList.add('disabled');
         document.getElementById('menuTileEditor').classList.add('disabled');
+        // Disable bitmap-only File save options
+        ['menuSavePc','menuSavePat','menuSaveCol','menuSaveGrp','menuSaveSC2',
+         'menuSavePP10k','menuSavePP40k','menuExportDat'].forEach(id =>
+            document.getElementById(id).classList.add('disabled'));
+        // Disable Stamp menu (bitmap stamps, not tile stamps)
+        document.getElementById('menuStampDropdown').style.pointerEvents = 'none';
+        document.getElementById('menuStampDropdown').style.opacity = '0.5';
         this.updateTileModeBar();
         this.updateTileColorPanel();
         TILE_RENDERER.render();
@@ -7570,6 +7577,13 @@ const UI = {
         // Restore bitmap-only menu items
         document.getElementById('menuBitmapToTiles').classList.remove('disabled');
         document.getElementById('menuTileEditor').classList.remove('disabled');
+        // Restore bitmap-only File save options
+        ['menuSavePc','menuSavePat','menuSaveCol','menuSaveGrp','menuSaveSC2',
+         'menuSavePP10k','menuSavePP40k','menuExportDat'].forEach(id =>
+            document.getElementById(id).classList.remove('disabled'));
+        // Restore Stamp menu
+        document.getElementById('menuStampDropdown').style.pointerEvents = '';
+        document.getElementById('menuStampDropdown').style.opacity = '';
         // brushOptionsPanel reste caché sauf si l'outil brosse est actif
         document.getElementById('brushOptionsPanel').style.setProperty('display', STATE.tool === 'brush' ? '' : 'none', 'important');
         // textAlignGroup selon l'outil bitmap actif
